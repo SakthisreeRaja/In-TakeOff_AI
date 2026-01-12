@@ -4,9 +4,16 @@ function Sidebar() {
   return (
     <aside className="w-[18%] bg-zinc-900 p-6 flex flex-col">
       <div>
-        <h1 className="text-xl font-bold mb-10">
-          InTake-off.ai
-        </h1>
+        <div className="flex items-center gap-3 mb-10">
+          <img
+            src="/logo.jpg"
+            alt="InTake-off.ai logo"
+            className="w-9 h-9 object-contain"
+          />
+          <h1 className="text-xl font-bold">
+            InTake-Off.AI
+          </h1>
+        </div>
 
         <nav className="flex flex-col gap-4 text-gray-300">
           <button className="flex items-center gap-3 text-white">
