@@ -1,57 +1,30 @@
+import { NavLink } from "react-router-dom"
 import { FiHome, FiFolder, FiSettings } from "react-icons/fi"
 
-function Sidebar() {
+export default function Sidebar() {
   return (
-    <aside className="w-[18%] bg-zinc-900 p-6 flex flex-col">
-      <div>
-        <div className="flex items-center gap-3 mb-10">
-          <img
-            src="/logo.jpg"
-            alt="InTake-off.ai logo"
-            className="w-9 h-9 object-contain"
-          />
-          <h1 className="text-xl font-bold">
-            InTake-Off.AI
-          </h1>
-        </div>
-
-        <nav className="flex flex-col gap-4 text-gray-300">
-          <button className="flex items-center gap-3 text-white">
-            <FiHome /> Dashboard
-          </button>
-
-          <button className="flex items-center gap-3">
-            <FiFolder /> Projects
-          </button>
-
-          <button className="flex items-center gap-3">
-            <FiSettings /> Settings
-          </button>
-        </nav>
-      </div>
-
-      <button
-        type="button"
-        className="mt-auto pt-6 border-t border-zinc-800 flex items-center gap-3 w-full text-left hover:bg-zinc-800 rounded-lg p-3 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <div className="relative">
-          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-semibold">
-            U
-          </div>
-          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-zinc-900 rounded-full" />
-        </div>
-
-        <div className="leading-tight">
-          <p className="text-sm font-medium">
-            User
-          </p>
-          <p className="text-xs text-gray-400">
-            Online
-          </p>
-        </div>
-      </button>
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-zinc-900 text-white p-6">
+      <h1 className="text-xl font-semibold mb-8">InTakeOff.AI</h1>
+      <nav className="space-y-2">
+        <NavLink to="/" className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-zinc-800" : "text-zinc-400"}`
+        }>
+          <FiHome />
+          Dashboard
+        </NavLink>
+        <NavLink to="/projects" className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-zinc-800" : "text-zinc-400"}`
+        }>
+          <FiFolder />
+          Projects
+        </NavLink>
+        <NavLink to="/settings" className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-zinc-800" : "text-zinc-400"}`
+        }>
+          <FiSettings />
+          Settings
+        </NavLink>
+      </nav>
     </aside>
   )
 }
-
-export default Sidebar

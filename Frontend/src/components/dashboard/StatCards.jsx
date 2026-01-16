@@ -5,23 +5,27 @@ import {
   FiTrendingUp,
 } from "react-icons/fi"
 
-function StatCards() {
+export default function StatCards({ projects }) {
+  const totalProjects = projects.length
+  const completed = projects.filter(p => p.status === "complete").length
+  const drafts = projects.filter(p => p.status === "draft").length
+
   const stats = [
     {
       title: "Total Projects",
-      value: "12",
+      value: totalProjects,
       icon: <FiFolder />,
       color: "bg-blue-500/20 text-blue-400",
     },
     {
-      title: "Total Detections",
-      value: "1,245",
+      title: "Completed Projects",
+      value: completed,
       icon: <FiTarget />,
       color: "bg-green-500/20 text-green-400",
     },
     {
       title: "Pending Review",
-      value: "3",
+      value: drafts,
       icon: <FiClock />,
       color: "bg-yellow-500/20 text-yellow-400",
     },
@@ -35,7 +39,7 @@ function StatCards() {
 
   return (
     <div className="grid grid-cols-4 gap-6 mt-6">
-      {stats.map((stat) => (
+      {stats.map(stat => (
         <div
           key={stat.title}
           className="bg-zinc-900 rounded-xl p-6 flex items-center justify-between"
@@ -59,5 +63,3 @@ function StatCards() {
     </div>
   )
 }
-
-export default StatCards

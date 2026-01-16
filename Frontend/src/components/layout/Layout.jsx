@@ -1,17 +1,16 @@
 import Sidebar from "./Sidebar"
 import Topbar from "./Topbar"
 
-function Layout({ children }) {
+export default function Layout({ children }) {
   return (
-    <div className="flex h-screen bg-black text-white">
+    <div className="min-h-screen bg-black">
       <Sidebar />
-
-      <div className="flex-1 flex flex-col">
+      <div className="ml-64 min-h-screen flex flex-col">
         <Topbar />
-        {children}
+        <main className="flex-1 p-6">
+          {children}
+        </main>
       </div>
     </div>
   )
 }
-
-export default Layout
