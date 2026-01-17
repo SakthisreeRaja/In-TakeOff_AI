@@ -1,12 +1,16 @@
 import { FiSearch, FiPlus } from "react-icons/fi"
+import { useNavigate } from "react-router-dom"
 
-export default function ProjectsHeader({ search, setSearch, status, setStatus, onNew }) {
+export default function ProjectsHeader({ search, setSearch, status, setStatus }) {
+  const navigate = useNavigate()
+
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
       <div className="text-sm text-zinc-400">
         Dashboard <span className="mx-1">›</span>
         <span className="text-white">Projects</span>
       </div>
+
       <div className="flex items-center gap-3 ml-auto">
         <div className="relative">
           <FiSearch className="absolute left-3 top-2.5 text-zinc-400" />
@@ -17,6 +21,7 @@ export default function ProjectsHeader({ search, setSearch, status, setStatus, o
             placeholder="Search projects"
           />
         </div>
+
         <select
           value={status}
           onChange={e => setStatus(e.target.value)}
@@ -26,7 +31,11 @@ export default function ProjectsHeader({ search, setSearch, status, setStatus, o
           <option value="draft">Draft</option>
           <option value="complete">Complete</option>
         </select>
-        <button onClick={onNew} className="flex items-center gap-2 bg-sky-500 text-black px-4 py-2 rounded-lg text-sm font-medium">
+
+        <button
+          onClick={() => navigate(`/projects/${Date.now()}`)}
+          className="flex items-center gap-2 bg-sky-500 text-black px-4 py-2 rounded-lg text-sm font-medium"
+        >
           <FiPlus />
           New Project
         </button>
