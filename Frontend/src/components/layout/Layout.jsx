@@ -12,31 +12,26 @@ export default function Layout({ children }) {
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const marginLeft = isEditor
-    ? "ml-0"
-    : sidebarOpen
-    ? "ml-64"
-    : "ml-16"
-
   return (
-    <div className="min-h-screen bg-black">
+    <div className="h-screen overflow-hidden bg-black flex">
       {!isEditor && (
-        <Sidebar
-          open={sidebarOpen}
-          onToggle={() => setSidebarOpen(v => !v)}
-        />
+        <div className={`transition-all duration-300 ${sidebarOpen ? "w-64" : "w-16"} flex-none`}>
+          <Sidebar
+            open={sidebarOpen}
+            onToggle={() => setSidebarOpen(v => !v)}
+          />
+        </div>
       )}
 
-      <div
-        className={`min-h-screen flex flex-col transition-all duration-300 ${marginLeft}`}
-      >
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar />
+
         <main
-          className={`flex-1 min-h-0 py-6 ${
-            isEditor ? "" : "px-6"
-          }`}
+          className={`flex flex-1 min-h-0 overflow-hidden ${isEditor ? "" : "px-6 py-6"}`}
         >
-          {children}
+          <div className="w-full flex-1 flex flex-col min-h-0 min-w-0">
+            {children}
+          </div>
         </main>
       </div>
     </div>

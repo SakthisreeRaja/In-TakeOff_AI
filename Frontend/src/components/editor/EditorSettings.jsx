@@ -1,4 +1,9 @@
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
+import { useState } from "react"
+
 export default function EditorSettings({ filters, setFilters }) {
+  const [open, setOpen] = useState(true)
+
   const classes = [
     "Diffuser",
     "Grille",
@@ -17,32 +22,42 @@ export default function EditorSettings({ filters, setFilters }) {
   }
 
   return (
-    <div className="w-72 border-r border-zinc-800 px-6 py-4 overflow-y-auto">
-      <h3 className="text-sm font-semibold mb-4">
-        Settings
-      </h3>
-
-      <p className="text-xs text-zinc-400 mb-2">
-        Confidence Threshold: 15%
-      </p>
-      <input type="range" className="w-full mb-6" />
-
-      <h4 className="text-sm font-semibold mb-2">
-        Class Filters
-      </h4>
-
-      <div className="space-y-2 text-sm text-zinc-300">
-        {classes.map(cls => (
-          <label key={cls} className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={filters[cls]}
-              onChange={() => toggle(cls)}
-            />
-            {cls.replace("_", " / ")}
-          </label>
-        ))}
+    <div className={`border-r border-zinc-800 flex flex-col transition-all duration-300 ${open ? "w-72" : "w-12"}`}>
+      <div className="h-12 flex items-center justify-between px-3 border-b border-zinc-800">
+        {open && <span className="text-sm font-semibold">Settings</span>}
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded"
+        >
+          {open ? <FiChevronLeft /> : <FiChevronRight />}
+        </button>
       </div>
+
+      {open && (
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <p className="text-xs text-zinc-400 mb-2">
+            Confidence Threshold: 15%
+          </p>
+          <input type="range" className="w-full mb-6" />
+
+          <h4 className="text-sm font-semibold mb-2">
+            Class Filters
+          </h4>
+
+          <div className="space-y-2 text-sm text-zinc-300">
+            {classes.map(cls => (
+              <label key={cls} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters[cls]}
+                  onChange={() => toggle(cls)}
+                />
+                {cls.replace("_", " / ")}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

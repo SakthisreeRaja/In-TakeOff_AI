@@ -19,14 +19,20 @@ export default function Projects({ projects }) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full">
       <ProjectsHeader
         search={search}
         setSearch={setSearch}
         status={status}
         setStatus={setStatus}
       />
-      <ProjectsGrid projects={filtered} onOpen={handleOpen} />
+
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide w-full">
+        <ProjectsGrid
+          projects={filtered}
+          onOpen={handleOpen}
+        />
+      </div>
     </div>
   )
 }

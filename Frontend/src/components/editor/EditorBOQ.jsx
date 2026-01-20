@@ -1,25 +1,39 @@
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
+import { useState } from "react"
+
 export default function EditorBOQ() {
+  const [open, setOpen] = useState(true)
+
   return (
-    <div className="w-80 border-l border-zinc-800 px-6 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">
-          Bill of Quantities
-        </h3>
-        <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">
-          0 items
-        </span>
+    <div className={`border-l border-zinc-800 flex flex-col transition-all duration-300 ${open ? "w-80" : "w-12"}`}>
+      <div className="h-12 flex items-center justify-between px-3 border-b border-zinc-800">
+        {open && <span className="text-sm font-semibold">Bill of Quantities</span>}
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded"
+        >
+          {open ? <FiChevronRight /> : <FiChevronLeft />}
+        </button>
       </div>
 
-      <div className="text-center text-zinc-400 mt-20">
-        <p>No detections yet.</p>
-        <p className="text-xs mt-1">
-          Run detection to generate BOQ
-        </p>
-      </div>
+      {open && (
+        <>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="text-center text-zinc-400 mt-20">
+              <p>No detections yet.</p>
+              <p className="text-xs mt-1">
+                Run detection to generate BOQ
+              </p>
+            </div>
+          </div>
 
-      <button className="w-full mt-6 bg-blue-600 py-2 rounded-lg text-sm">
-        Export BOQ
-      </button>
+          <div className="border-t border-zinc-800 px-6 py-4">
+            <button className="w-full bg-blue-600 py-2 rounded-lg text-sm">
+              Export BOQ
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
