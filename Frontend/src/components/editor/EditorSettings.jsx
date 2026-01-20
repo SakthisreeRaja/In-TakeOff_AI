@@ -1,0 +1,48 @@
+export default function EditorSettings({ filters, setFilters }) {
+  const classes = [
+    "Diffuser",
+    "Grille",
+    "Damper",
+    "Fan",
+    "VAV_FCU",
+    "AHU_RTU",
+    "Louver",
+  ]
+
+  function toggle(cls) {
+    setFilters(prev => ({
+      ...prev,
+      [cls]: !prev[cls],
+    }))
+  }
+
+  return (
+    <div className="w-72 border-r border-zinc-800 px-6 py-4 overflow-y-auto">
+      <h3 className="text-sm font-semibold mb-4">
+        Settings
+      </h3>
+
+      <p className="text-xs text-zinc-400 mb-2">
+        Confidence Threshold: 15%
+      </p>
+      <input type="range" className="w-full mb-6" />
+
+      <h4 className="text-sm font-semibold mb-2">
+        Class Filters
+      </h4>
+
+      <div className="space-y-2 text-sm text-zinc-300">
+        {classes.map(cls => (
+          <label key={cls} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={filters[cls]}
+              onChange={() => toggle(cls)}
+            />
+            {cls.replace("_", " / ")}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
