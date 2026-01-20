@@ -31,7 +31,11 @@ export default function Layout({ children }) {
         className={`min-h-screen flex flex-col transition-all duration-300 ${marginLeft}`}
       >
         <Topbar />
-        <main className="flex-1 min-h-0 px-6 py-6">
+        <main
+          className={`flex-1 min-h-0 py-6 ${
+            isEditor ? "" : "px-6"
+          }`}
+        >
           {children}
         </main>
       </div>
