@@ -5,9 +5,17 @@ export default function EditorBOQ() {
   const [open, setOpen] = useState(true)
 
   return (
-    <div className={`border-l border-zinc-800 flex flex-col transition-all duration-300 ${open ? "w-80" : "w-12"}`}>
+    <div
+      className={`border-l border-zinc-800 flex flex-col overflow-hidden transition-all duration-300 ${
+        open ? "w-80" : "w-12"
+      }`}
+    >
       <div className="h-12 flex items-center justify-between px-3 border-b border-zinc-800">
-        {open && <span className="text-sm font-semibold">Bill of Quantities</span>}
+        {open && (
+          <span className="text-sm font-semibold">
+            Bill of Quantities
+          </span>
+        )}
         <button
           onClick={() => setOpen(v => !v)}
           className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded"
@@ -17,22 +25,14 @@ export default function EditorBOQ() {
       </div>
 
       {open && (
-        <>
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <div className="text-center text-zinc-400 mt-20">
-              <p>No detections yet.</p>
-              <p className="text-xs mt-1">
-                Run detection to generate BOQ
-              </p>
-            </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 scrollbar-hide">
+          <div className="text-center text-zinc-400 mt-20">
+            <p>No detections yet.</p>
+            <p className="text-xs mt-1">
+              Run detection to generate BOQ
+            </p>
           </div>
-
-          <div className="border-t border-zinc-800 px-6 py-4">
-            <button className="w-full bg-blue-600 py-2 rounded-lg text-sm">
-              Export BOQ
-            </button>
-          </div>
-        </>
+        </div>
       )}
     </div>
   )

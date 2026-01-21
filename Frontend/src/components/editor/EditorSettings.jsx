@@ -22,7 +22,11 @@ export default function EditorSettings({ filters, setFilters }) {
   }
 
   return (
-    <div className={`border-r border-zinc-800 flex flex-col transition-all duration-300 ${open ? "w-72" : "w-12"}`}>
+    <div
+      className={`border-r border-zinc-800 flex flex-col overflow-hidden transition-all duration-300 ${
+        open ? "w-72" : "w-12"
+      }`}
+    >
       <div className="h-12 flex items-center justify-between px-3 border-b border-zinc-800">
         {open && <span className="text-sm font-semibold">Settings</span>}
         <button
@@ -34,7 +38,7 @@ export default function EditorSettings({ filters, setFilters }) {
       </div>
 
       {open && (
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 scrollbar-hide">
           <p className="text-xs text-zinc-400 mb-2">
             Confidence Threshold: 15%
           </p>
