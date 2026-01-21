@@ -15,7 +15,11 @@ export default function Layout({ children }) {
   return (
     <div className="h-screen overflow-hidden bg-black flex">
       {!isEditor && (
-        <div className={`transition-all duration-300 ${sidebarOpen ? "w-64" : "w-16"} flex-none`}>
+        <div
+          className={`transition-all duration-300 ${
+            sidebarOpen ? "w-64" : "w-16"
+          } flex-none`}
+        >
           <Sidebar
             open={sidebarOpen}
             onToggle={() => setSidebarOpen(v => !v)}
@@ -27,7 +31,9 @@ export default function Layout({ children }) {
         <Topbar />
 
         <main
-          className={`flex flex-1 min-h-0 overflow-hidden ${isEditor ? "" : "px-6 py-6"}`}
+          className={`flex flex-1 min-h-0 overflow-hidden ${
+            isEditor ? "" : "px-6 py-6"
+          }`}
         >
           <div className="w-full flex-1 flex flex-col min-h-0 min-w-0">
             {children}
