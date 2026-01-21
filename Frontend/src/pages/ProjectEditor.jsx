@@ -8,8 +8,10 @@ import EditorBOQ from "../components/editor/EditorBOQ"
 export default function ProjectEditor({ projects, setProjects }) {
   const navigate = useNavigate()
   const { id } = useParams()
+  const containerRef = useRef(null)
 
   const [project, setProject] = useState(null)
+  const [pdfFile, setPdfFile] = useState(null)
   const createdRef = useRef(false)
 
   const [filters, setFilters] = useState({
@@ -22,11 +24,9 @@ export default function ProjectEditor({ projects, setProjects }) {
     Louver: true,
   })
 
-  const [settingsWidth, setSettingsWidth] = useState(280)
-  const [boqWidth, setBoqWidth] = useState(320)
+  const widths = useRef({ settings: 280, boq: 320 })
+  const [layout, setLayout] = useState({ settings: 280, boq: 320 })
   const [isDragging, setIsDragging] = useState(false)
-
-  const containerRef = useRef(null)
 
   useEffect(() => {
     if (id === "new" && !createdRef.current) {
@@ -57,24 +57,42 @@ export default function ProjectEditor({ projects, setProjects }) {
   function startResize(type, e) {
     e.preventDefault()
     setIsDragging(true)
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
 
-    const startX = e.clientX
-    const startSettings = settingsWidth
-    const containerRight =
-      containerRef.current.getBoundingClientRect().right
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const containerLeft = containerRect.left
+    const containerWidth = containerRect.width
+    const handleWidth = 16 
 
     function onMove(ev) {
+      const mouseX = ev.clientX - containerLeft
+
       if (type === "settings") {
-        const delta = ev.clientX - startX
-        setSettingsWidth(Math.max(0, startSettings + delta))
+        let newSettings = Math.max(0, mouseX)
+        newSettings = Math.min(newSettings, containerWidth - handleWidth)
+
+        const availableForBoq = containerWidth - handleWidth - newSettings
+        const newBoq = Math.min(widths.current.boq, availableForBoq)
+
+        widths.current = { settings: newSettings, boq: newBoq }
       } else {
-        const newWidth = containerRight - ev.clientX
-        setBoqWidth(Math.max(0, newWidth))
+        let newBoq = Math.max(0, containerWidth - (mouseX + 8))
+        newBoq = Math.min(newBoq, containerWidth - handleWidth)
+
+        const availableForSettings = containerWidth - handleWidth - newBoq
+        const newSettings = Math.min(widths.current.settings, availableForSettings)
+
+        widths.current = { settings: newSettings, boq: newBoq }
       }
+
+      setLayout({ ...widths.current })
     }
 
     function onUp() {
       setIsDragging(false)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
       window.removeEventListener("mousemove", onMove)
       window.removeEventListener("mouseup", onUp)
     }
@@ -86,72 +104,68 @@ export default function ProjectEditor({ projects, setProjects }) {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-full min-h-screen"
+      className="flex flex-col h-full min-h-screen overflow-hidden"
     >
       <EditorHeader
         projectName={project ? project.name : "Project"}
         onBack={() => navigate("/projects")}
       />
 
-      <div className="flex flex-1 min-h-0 min-w-0">
-        {/* SETTINGS */}
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
+        
         <div
-          style={{ width: settingsWidth }}
+          style={{ width: layout.settings }}
           className="border-r border-zinc-800 flex-shrink-0 overflow-hidden"
         >
           <EditorSettings
             filters={filters}
             setFilters={setFilters}
-            hidden={settingsWidth < 60}
+            hidden={layout.settings < 60}
           />
         </div>
 
-        {/* LEFT HANDLE */}
         <div
           onMouseDown={e => startResize("settings", e)}
-          className="w-2 bg-zinc-900 hover:bg-zinc-800 relative flex-shrink-0"
+          className="w-2 bg-zinc-900 hover:bg-zinc-800 relative flex-shrink-0 z-50 transition-colors flex items-center justify-center"
         >
-          {!isDragging && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-              <div className="grid grid-cols-2 gap-0.5">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="w-1 h-1 bg-zinc-400 rounded-full"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="grid grid-cols-2 gap-0.5 opacity-0 hover:opacity-100">
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+          </div>
         </div>
 
-        <EditorCanvas filters={filters} />
+        <div className="flex-1 min-w-0 overflow-hidden relative bg-black">
+           <EditorCanvas 
+             filters={filters} 
+             pdfFile={pdfFile}
+             onUpload={(file) => setPdfFile(file)}
+             isDragging={isDragging}
+           />
+        </div>
 
-        {/* RIGHT HANDLE */}
         <div
           onMouseDown={e => startResize("boq", e)}
-          className="w-2 bg-zinc-900 hover:bg-zinc-800 relative flex-shrink-0"
+          className="w-2 bg-zinc-900 hover:bg-zinc-800 relative flex-shrink-0 z-50 transition-colors flex items-center justify-center"
         >
-          {!isDragging && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-              <div className="grid grid-cols-2 gap-0.5">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="w-1 h-1 bg-zinc-400 rounded-full"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+           <div className="grid grid-cols-2 gap-0.5 opacity-0 hover:opacity-100">
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+             <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
+          </div>
         </div>
 
-        {/* BOQ — ALWAYS PRESENT */}
         <div
-          style={{ width: boqWidth }}
+          style={{ width: layout.boq }}
           className="border-l border-zinc-800 flex-shrink-0 overflow-hidden"
         >
-          <EditorBOQ hidden={boqWidth < 60} />
+          <EditorBOQ hidden={layout.boq < 60} />
         </div>
       </div>
     </div>
