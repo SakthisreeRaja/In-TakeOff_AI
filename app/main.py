@@ -1,5 +1,7 @@
 import os
 import time
+import os
+import time
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +9,7 @@ from dotenv import load_dotenv
 from app.core.database import engine, Base
 
 # Import all models to register them with SQLAlchemy
-from app.models import users, projects, detections, members, boqexports
+from app.models import users, projects, detections, members, boqexports, pages
 
 from app.api import (
     projects,
@@ -60,4 +62,23 @@ async def log_requests(request: Request, call_next):
 
 # --------------------------------------------------
 # GLOBAL ERROR HANDLER
-# -------------
+# --------------------------------------------------
+@app.exception_handler(500)
+async def internal_error_handler(request: Request, exc: Exception):
+    print(f"INTERNAL ERROR: {exc}")
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"UNHANDLED ERROR: {exc}")
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Unhandled error: {str(exc)}"}
+    )

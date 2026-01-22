@@ -31,6 +31,11 @@ class Project(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
+    pages = relationship("Page", back_populates="project", cascade="all, delete-orphan")
+    detections = relationship("Detection", back_populates="project")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
     user = relationship("User", back_populates="projects")
     team = relationship("Team", back_populates="projects")
     detections = relationship("Detection", back_populates="project")

@@ -39,3 +39,9 @@ def update_project(
 @router.delete("/{project_id}", status_code=204)
 def delete_project(project_id: str, db: Session = Depends(get_db)):
     ProjectService(db).delete_project(project_id)
+
+@router.get("/{project_id}/pages")
+def get_project_pages(project_id: str, db: Session = Depends(get_db)):
+    """Get all pages and bounding boxes for a project"""
+    from app.services.pdf_service import PDFService
+    return PDFService(db).get_project_pages(project_id)
