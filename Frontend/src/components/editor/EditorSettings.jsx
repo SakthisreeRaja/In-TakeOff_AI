@@ -1,5 +1,10 @@
 import { useState } from "react"
-import { FiSliders, FiInfo, FiTool } from "react-icons/fi"
+import { 
+  FiSliders, FiInfo, FiTool, 
+  FiMousePointer, FiMove, FiSquare, FiPenTool, 
+  FiMaximize, FiGrid, FiPlusCircle, FiType, 
+  FiMap, FiZoomIn, FiZoomOut, FiTrash2, FiLayers
+} from "react-icons/fi"
 
 export default function EditorSettings({ filters, setFilters, hidden, activeTool, setActiveTool, width }) {
   const [activeTab, setActiveTab] = useState("tools")
@@ -41,38 +46,98 @@ export default function EditorSettings({ filters, setFilters, hidden, activeTool
   )
 
   const renderProperties = () => (
-    <div className="text-center text-zinc-500 mt-10 animate-in fade-in duration-300">
-      <p className="text-sm">No element selected</p>
-      <p className="text-xs mt-1">Select a component to view details</p>
+    <div className="animate-in fade-in duration-300 space-y-4">
+      <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Dimensions</h4>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Neck Size</label>
+            <input type="text" placeholder='12"x12"' className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Face Size</label>
+            <input type="text" placeholder='24"x24"' className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] text-zinc-500 block mb-1">Inlet Size</label>
+          <input type="text" placeholder='10" Ø' className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+        </div>
+      </div>
+
+      <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Specifications</h4>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">CFM</label>
+            <input type="number" placeholder="450" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Orientation</label>
+            <select className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none">
+              <option>0°</option>
+              <option>90°</option>
+              <option>180°</option>
+              <option>270°</option>
+            </select>
+          </div>
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] text-zinc-500 block mb-1">Material</label>
+          <select className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none">
+            <option>Aluminum</option>
+            <option>Steel</option>
+            <option>Plastic</option>
+            <option>Stainless Steel</option>
+          </select>
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] text-zinc-500 block mb-1">Manufacturer & Model</label>
+          <input type="text" placeholder="Titus / T-123" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+        </div>
+        <div>
+           <label className="text-[10px] text-zinc-500 block mb-1">Specification Note</label>
+           <textarea rows="3" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none resize-none" placeholder="Add specific notes..."></textarea>
+        </div>
+      </div>
     </div>
   )
 
+  const toolsList = [
+    { id: "select", icon: FiMousePointer, label: "Select" },
+    { id: "pan", icon: FiMove, label: "Pan" },
+    { id: "draw_box", icon: FiSquare, label: "Box (Equip)" },
+    { id: "polyline", icon: FiPenTool, label: "Polyline (Duct)" },
+    { id: "measure", icon: FiMaximize, label: "Distance" },
+    { id: "area", icon: FiGrid, label: "Area (Zone)" },
+    { id: "count", icon: FiPlusCircle, label: "Counter" },
+    { id: "text", icon: FiType, label: "Text/Tag" },
+    { id: "scale", icon: FiMap, label: "Set Scale" },
+    { id: "zoom_in", icon: FiZoomIn, label: "Zoom In" },
+    { id: "zoom_out", icon: FiZoomOut, label: "Zoom Out" },
+    { id: "eraser", icon: FiTrash2, label: "Eraser" },
+  ]
+
   const renderTools = () => (
-    <div className={`grid gap-3 mt-2 animate-in fade-in duration-300 ${isNarrow ? "grid-cols-1" : "grid-cols-2"}`}>
-      <button 
-        onClick={() => setActiveTool("select")}
-        className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-colors ${activeTool === "select" ? "bg-zinc-800 border-blue-500 text-white" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"}`}
-      >
-        <span className="text-xl mb-2">👆</span> <span className="text-xs">Select</span>
-      </button>
-      <button 
-        onClick={() => setActiveTool("draw_box")}
-        className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-colors ${activeTool === "draw_box" ? "bg-zinc-800 border-blue-500 text-white" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"}`}
-      >
-        <span className="text-xl mb-2">✏️</span> <span className="text-xs">Draw Box</span>
-      </button>
-      <button 
-        onClick={() => setActiveTool("measure")}
-        className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-colors ${activeTool === "measure" ? "bg-zinc-800 border-blue-500 text-white" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"}`}
-      >
-        <span className="text-xl mb-2">📏</span> <span className="text-xs">Measure</span>
-      </button>
-      <button 
-        onClick={() => setActiveTool("eraser")}
-        className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-colors ${activeTool === "eraser" ? "bg-zinc-800 border-blue-500 text-white" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800"}`}
-      >
-        <span className="text-xl mb-2">🗑️</span> <span className="text-xs">Eraser</span>
-      </button>
+    <div className={`grid gap-2 mt-2 animate-in fade-in duration-300 ${isNarrow ? "grid-cols-2" : "grid-cols-3"}`}>
+      {toolsList.map((tool) => {
+        const Icon = tool.icon
+        const isActive = activeTool === tool.id
+        return (
+          <button
+            key={tool.id}
+            onClick={() => setActiveTool(tool.id)}
+            className={`flex flex-col items-center justify-center p-2.5 rounded-lg border transition-all duration-200
+              ${isActive 
+                ? "bg-blue-600/10 border-blue-500 text-blue-400" 
+                : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-700"
+              }`}
+          >
+            <Icon size={18} className="mb-1.5" />
+            <span className="text-[10px] font-medium text-center leading-tight">{tool.label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 
