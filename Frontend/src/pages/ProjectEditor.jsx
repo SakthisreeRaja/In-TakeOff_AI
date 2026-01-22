@@ -12,6 +12,7 @@ export default function ProjectEditor({ projects, setProjects }) {
 
   const [project, setProject] = useState(null)
   const [pdfFile, setPdfFile] = useState(null)
+  const [activeTool, setActiveTool] = useState("select") 
   const createdRef = useRef(false)
 
   const [filters, setFilters] = useState({
@@ -120,6 +121,8 @@ export default function ProjectEditor({ projects, setProjects }) {
           <EditorSettings
             filters={filters}
             setFilters={setFilters}
+            activeTool={activeTool}
+            setActiveTool={setActiveTool}
             hidden={layout.settings < 60}
           />
         </div>
@@ -128,7 +131,7 @@ export default function ProjectEditor({ projects, setProjects }) {
           onMouseDown={e => startResize("settings", e)}
           className="w-2 bg-zinc-900 hover:bg-zinc-800 relative flex-shrink-0 z-50 transition-colors flex items-center justify-center"
         >
-          <div className="grid grid-cols-2 gap-0.5 opacity-0 hover:opacity-100">
+          <div className="grid grid-cols-2 gap-0.5 opacity-100">
              <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
              <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
              <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
@@ -144,6 +147,7 @@ export default function ProjectEditor({ projects, setProjects }) {
              pdfFile={pdfFile}
              onUpload={(file) => setPdfFile(file)}
              isDragging={isDragging}
+             activeTool={activeTool}
            />
         </div>
 
@@ -151,7 +155,7 @@ export default function ProjectEditor({ projects, setProjects }) {
           onMouseDown={e => startResize("boq", e)}
           className="w-2 bg-zinc-900 hover:bg-zinc-800 relative flex-shrink-0 z-50 transition-colors flex items-center justify-center"
         >
-           <div className="grid grid-cols-2 gap-0.5 opacity-0 hover:opacity-100">
+           <div className="grid grid-cols-2 gap-0.5 opacity-100">
              <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
              <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
              <div className="w-0.5 h-0.5 bg-zinc-500 rounded-full"></div>
