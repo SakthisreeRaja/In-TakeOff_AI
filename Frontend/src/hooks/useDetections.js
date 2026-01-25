@@ -1,0 +1,33 @@
+import { useEffect, useState } from "react"
+import {
+  getPageDetections,
+  createDetection,
+  updateDetection,
+  deleteDetection,
+} from "../services/api"
+
+export default function useDetections(pageId) {
+  const [detections, setDetections] = useState([])
+
+  useEffect(() => {
+    if (!pageId) return
+    getPageDetections(pageId).then(setDetections)
+  }, [pageId])
+
+  async function add(box) {
+    const d = await createDetection(pageId, box)
+    setDetections(v => [...v, d])
+  }
+
+  async function update(id, data) {
+    const d = await updateDetection(id, data)
+    setDetections(v => v.map(x => (x.id === id ? d : x)))
+  }
+
+  async function remove(id) {
+    await deleteDetection(id)
+    setDetections(v => v.filter(x => x.id !== id))
+  }
+
+  return { detections, add, update, remove }
+}

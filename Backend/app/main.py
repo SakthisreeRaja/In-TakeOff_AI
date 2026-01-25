@@ -1,56 +1,56 @@
-import os
-import time
-import os
 import time
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from app.core.database import engine, Base
 
-# Import all models to register them with SQLAlchemy
+from app.core.database import engine
 from app.models import users, projects, detections, members, boqexports, pages
 
 from app.api import (
-    projects,
+    projects as projects_api,
     uploads,
-    pages,
-    detections,
-    users,
-    teams,
+    pages as pages_api,
+    detections as detections_api,
+    users as users_api,
+    teams as teams_api,
 )
 
-# --------------------------------------------------
-# ENV SETUP
-# --------------------------------------------------
 load_dotenv()
-try:
-    Base.metadata.create_all(bind=engine)
-    print("✓ Database connection successful")
-except Exception as e:
-    print(f"⚠ Database connection failed: {e}")
-    print("⚠ Server will start but database operations will fail")
-# --------------------------------------------------
-# APP INIT
-# --------------------------------------------------
+
+print("✓ Database configured (Alembic managed)")
+
 app = FastAPI(
     title="HVAC AI Backend",
     version="1.0.0",
 )
 
-# --------------------------------------------------
-# ROUTES
-# --------------------------------------------------
-app.include_router(users.router, prefix="/api")
-app.include_router(teams.router, prefix="/api")
-app.include_router(projects.router, prefix="/api")
-app.include_router(uploads.router, prefix="/api")
-app.include_router(pages.router, prefix="/api")
-app.include_router(detections.router, prefix="/api")
+# ----------------------------
+# 🔥 CORS (THIS FIXES EVERYTHING)
+# ----------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# --------------------------------------------------
-# LOGGING MIDDLEWARE (Express equivalent)
-# --------------------------------------------------
+# ----------------------------
+# ROUTERS
+# ----------------------------
+app.include_router(users_api.router, prefix="/api")
+app.include_router(teams_api.router, prefix="/api")
+app.include_router(projects_api.router, prefix="/api")
+app.include_router(uploads.router, prefix="/api")
+app.include_router(pages_api.router, prefix="/api")
+app.include_router(detections_api.router, prefix="/api")
+
+# ----------------------------
+# LOGGING
+# ----------------------------
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
@@ -65,25 +65,21 @@ async def log_requests(request: Request, call_next):
 
     return response
 
-# --------------------------------------------------
-# GLOBAL ERROR HANDLER
-# --------------------------------------------------
+# ----------------------------
+# ERROR HANDLERS
+# ----------------------------
 @app.exception_handler(500)
 async def internal_error_handler(request: Request, exc: Exception):
     print(f"INTERNAL ERROR: {exc}")
-    import traceback
-    traceback.print_exc()
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal server error: {str(exc)}"}
+        content={"detail": "Internal server error"}
     )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"UNHANDLED ERROR: {exc}")
-    import traceback
-    traceback.print_exc()
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Unhandled error: {str(exc)}"}
+        content={"detail": "Unhandled error"}
     )

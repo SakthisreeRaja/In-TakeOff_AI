@@ -1,32 +1,37 @@
-import { Routes, Route } from "react-router-dom"
-import { useState } from "react"
+import { Routes, Route, Navigate } from "react-router-dom"
 import Layout from "./components/layout/Layout"
 import Dashboard from "./pages/Dashboard"
 import Projects from "./pages/Projects"
 import ProjectEditor from "./pages/ProjectEditor"
-import { mockProjects } from "./data/mockProjects"
+import SignIn from "./pages/SignIn"
+
+function RequireAuth({ children }) {
+  const userId = localStorage.getItem("user_id")
+  if (!userId) {
+    return <Navigate to="/signin" replace />
+  }
+  return children
+}
 
 export default function App() {
-  const [projects, setProjects] = useState(mockProjects)
-
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard projects={projects} />} />
-        <Route
-          path="/projects"
-          element={<Projects projects={projects} />}
-        />
-        <Route
-          path="/projects/:id"
-          element={
-            <ProjectEditor
-              projects={projects}
-              setProjects={setProjects}
-            />
-          }
-        />
-      </Routes>
-    </Layout>
+    <Routes>
+      <Route path="/signin" element={<SignIn />} />
+
+      <Route
+        path="/*"
+        element={
+          <RequireAuth>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/:id" element={<ProjectEditor />} />
+              </Routes>
+            </Layout>
+          </RequireAuth>
+        }
+      />
+    </Routes>
   )
 }

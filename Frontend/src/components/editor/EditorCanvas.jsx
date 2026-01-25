@@ -1,5 +1,4 @@
-export default function EditorCanvas({ activeTool }) {
-  
+export default function EditorCanvas({ activeTool, onUpload }) {
   const getCursor = () => {
     switch (activeTool) {
       case "pan": return "grab"
@@ -18,7 +17,7 @@ export default function EditorCanvas({ activeTool }) {
   }
 
   return (
-    <div 
+    <div
       className="h-full w-full flex flex-col items-center justify-center bg-black"
       style={{ cursor: getCursor() }}
     >
@@ -26,11 +25,11 @@ export default function EditorCanvas({ activeTool }) {
         <div className="text-4xl mb-4">⬆️</div>
         <p className="mb-2 text-lg font-medium">No PDF Uploaded</p>
         <p className="text-sm text-zinc-500 mb-6 max-w-xs mx-auto">
-          Upload functionality is pending backend integration.
+          Upload HVAC PDF to begin detection
         </p>
         <button
-          onClick={() => alert("Waiting for backend integration.")}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          onClick={onUpload}
+          className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
         >
           Upload PDF
         </button>

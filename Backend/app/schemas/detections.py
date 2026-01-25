@@ -1,25 +1,18 @@
-from app.schemas.common import ORMBase
 from datetime import datetime
-from pydantic import BaseModel
 from typing import Optional
+from pydantic import BaseModel
 
-class DetectionBase(ORMBase):
+class DetectionCreate(BaseModel):
+    project_id: str
+    page_number: int
     class_name: str
     confidence: float
     bbox_x1: float
     bbox_y1: float
     bbox_x2: float
     bbox_y2: float
-    notes: str | None = None
+    notes: Optional[str] = None
     is_manual: bool = False
-
-class DetectionCreate(DetectionBase):
-    project_id: str
-    page_number: int
-
-class DetectionRead(DetectionBase):
-    id: str
-    created_at: datetime
 
 class DetectionUpdate(BaseModel):
     bbox_x1: Optional[float] = None
@@ -33,16 +26,16 @@ class DetectionUpdate(BaseModel):
 class DetectionResponse(BaseModel):
     id: str
     project_id: str
-    page_number: int
+    page_id: str
     class_name: str
     confidence: float
     bbox_x1: float
     bbox_y1: float
     bbox_x2: float
     bbox_y2: float
-    notes: str | None = None
+    notes: Optional[str]
     is_manual: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
