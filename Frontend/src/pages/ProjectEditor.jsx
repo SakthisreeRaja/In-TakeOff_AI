@@ -4,6 +4,7 @@ import EditorHeader from "../components/editor/EditorHeader"
 import EditorSettings from "../components/editor/EditorSettings"
 import EditorCanvas from "../components/editor/EditorCanvas"
 import EditorBOQ from "../components/editor/EditorBOQ"
+import useDetections from "../hooks/useDetections" 
 import {
   createProject,
   getProjects,
@@ -23,6 +24,14 @@ export default function ProjectEditor() {
   const createdRef = useRef(false)
 
   const userId = localStorage.getItem("user_id")
+
+  // --- Logic to get the Active Page ---
+  // Currently defaults to the first page. 
+  // You can add state later for multi-page switching: const [activePageIdx, setActivePageIdx] = useState(0)
+  const activePage = pages.length > 0 ? pages[0] : null
+  
+  // --- Hook: Fetch Detections for the Active Page ---
+  const { detections, add, remove, update } = useDetections(activePage?.page_id)
 
   useEffect(() => {
     if (!userId) {
@@ -170,8 +179,19 @@ export default function ProjectEditor() {
         </div>
 
         <div className="flex-1 min-w-0 overflow-hidden relative bg-black">
+          {/* UPDATED: Passing correct props to EditorCanvas */}
           <EditorCanvas
             activeTool={activeTool}
+            pages={pages}
+            activePageId={activePage?.page_id}
+            detections={detections}
+            onAddDetection={(box) => add({ 
+                ...box, 
+                project_id: project.id, 
+                // page_id is handled by the hook/API URL, but good to include in payload if needed
+                page_id: activePage?.page_id 
+            })}
+            onDeleteDetection={remove}
             onUpload={() => fileInputRef.current.click()}
           />
         </div>

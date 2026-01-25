@@ -1,5 +1,17 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api"
 
+async function handleResponse(res) {
+  if (!res.ok) {
+    const err = await res.text()
+    if (res.status === 400 && err.includes("User not found")) {
+       localStorage.removeItem("user_id")
+       window.location.href = "/signin"
+    }
+    throw new Error(err)
+  }
+  return res.json()
+}
+
 /* =========================
    USERS
    ========================= */
@@ -10,12 +22,15 @@ export async function createUser(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
+  return handleResponse(res)
+}
 
+// 🔥 NEW FUNCTION: Verifies if the user exists
+export async function getUser(userId) {
+  const res = await fetch(`${API_BASE}/users/${userId}`)
   if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
+    throw new Error("User not found")
   }
-
   return res.json()
 }
 
@@ -25,13 +40,7 @@ export async function createUser(payload) {
 
 export async function getProjects() {
   const res = await fetch(`${API_BASE}/projects/`)
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function createProject(payload) {
@@ -40,45 +49,26 @@ export async function createProject(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 /* =========================
-   PROJECT PAGES (PDF)
+   PROJECT PAGES & UPLOADS
    ========================= */
 
 export async function getProjectPages(projectId) {
   const res = await fetch(`${API_BASE}/projects/${projectId}/pages`)
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function uploadProjectPDF(projectId, file) {
   const formData = new FormData()
   formData.append("file", file)
-
   const res = await fetch(`${API_BASE}/projects/${projectId}/upload`, {
     method: "POST",
     body: formData,
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 /* =========================
@@ -87,13 +77,7 @@ export async function uploadProjectPDF(projectId, file) {
 
 export async function getPageDetections(pageId) {
   const res = await fetch(`${API_BASE}/detections/pages/${pageId}`)
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function createDetection(pageId, data) {
@@ -102,13 +86,7 @@ export async function createDetection(pageId, data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function updateDetection(detectionId, data) {
@@ -117,22 +95,12 @@ export async function updateDetection(detectionId, data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
-
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function deleteDetection(detectionId) {
   const res = await fetch(`${API_BASE}/detections/${detectionId}`, {
     method: "DELETE",
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err)
-  }
+  if (!res.ok) throw new Error("Failed to delete")
 }

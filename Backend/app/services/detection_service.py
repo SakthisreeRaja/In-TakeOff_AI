@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict
+from typing import Dict, List
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.detections import Detection
@@ -8,30 +8,28 @@ from app.services.base import BaseService
 
 class DetectionService(BaseService):
 
-    def _get_page(self, project_id: str, page_number: int) -> Page:
-        page = (
-            self.db.query(Page)
-            .filter(Page.project_id == project_id, Page.page_number == page_number)
-            .first()
-        )
+    def _get_page(self, page_id: str) -> Page:
+        page = self.db.query(Page).filter(Page.id == page_id).first()
         if not page:
             raise HTTPException(status_code=404, detail="Page not found")
         return page
 
-    def get_project_detections(self, project_id: str):
+    # 🔥 NEW METHOD REQUIRED BY API
+    def get_detections_by_page(self, page_id: str):
         return (
             self.db.query(Detection)
-            .filter(Detection.project_id == project_id)
+            .filter(Detection.page_id == page_id)
             .all()
         )
 
     def create_detection(self, data: Dict):
-        page = self._get_page(data["project_id"], data["page_number"])
+        # Verify page exists
+        self._get_page(data["page_id"])
 
         detection = Detection(
             id=str(uuid.uuid4()),
             project_id=data["project_id"],
-            page_id=page.id,
+            page_id=data["page_id"],
             class_name=data["class_name"],
             confidence=data["confidence"],
             bbox_x1=data["bbox_x1"],
@@ -39,7 +37,7 @@ class DetectionService(BaseService):
             bbox_x2=data["bbox_x2"],
             bbox_y2=data["bbox_y2"],
             notes=data.get("notes"),
-            is_manual=data.get("is_manual", False),
+            is_manual=data.get("is_manual", True),
         )
 
         self.db.add(detection)

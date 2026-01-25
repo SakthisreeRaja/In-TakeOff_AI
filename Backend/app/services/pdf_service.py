@@ -1,16 +1,45 @@
 import os
 import io
 import uuid
+import torch
 from fastapi import UploadFile, HTTPException
 from pdf2image import convert_from_bytes
+from PIL import Image
+
+# --- 🔥 FIX FOR PYTORCH 2.6+ CRASH 🔥 ---
+# PyTorch 2.6+ defaults to weights_only=True, which breaks older Ultralytics models.
+# We temporarily patch torch.load to allow loading the model.
+_original_load = torch.load
+def safe_load(*args, **kwargs):
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return _original_load(*args, **kwargs)
+torch.load = safe_load
+# ----------------------------------------
+
+# Industry Level: Import Ultralytics for YOLOv8
+try:
+    from ultralytics import YOLO
+    # Load model once at module level (Singleton pattern for AI models)
+    MODEL_PATH = "best.pt" 
+    # Check if model exists before loading
+    if os.path.exists(MODEL_PATH):
+        ai_model = YOLO(MODEL_PATH) 
+    else:
+        ai_model = None
+        print(f"⚠️ Warning: {MODEL_PATH} not found. AI detection will be mocked.")
+except ImportError:
+    print("⚠️ Warning: Ultralytics not installed. AI detection will be mocked.")
+    ai_model = None
+except Exception as e:
+    print(f"⚠️ Error loading YOLO model: {e}")
+    ai_model = None
 
 from app.services.base import BaseService
 from app.services.cloudinary_service import CloudinaryService
 from app.models.projects import Project
 from app.models.pages import Page
 from app.models.detections import Detection
-
-UPLOAD_ROOT = "uploads"
 
 class PDFService(BaseService):
 
@@ -29,12 +58,18 @@ class PDFService(BaseService):
 
         pdf_bytes = await file.read()
 
-        # 🔥 Convert PDF → PNG and upload to Cloudinary
-        images = convert_from_bytes(
-            pdf_bytes,
-            dpi=300,       # IMPORTANT for HVAC drawings
-            fmt="png",
-        )
+        # 🔥 Convert PDF -> PNG and upload to Cloudinary
+        # dpi=300 is important for reading small HVAC symbols
+        try:
+            images = convert_from_bytes(
+                pdf_bytes,
+                dpi=300,      
+                fmt="png",
+            )
+        except Exception as e:
+             # Fallback or error handling if poppler is missing
+             print(f"Error converting PDF: {e}")
+             raise HTTPException(status_code=500, detail="Failed to process PDF. Ensure Poppler is installed.")
 
         page_data = []
         
@@ -53,8 +88,9 @@ class PDFService(BaseService):
             )
             
             # Create page record in database
+            page_id = str(uuid.uuid4())
             page = Page(
-                id=str(uuid.uuid4()),
+                id=page_id,
                 project_id=project_id,
                 page_number=i,
                 image_url=upload_result["url"],
@@ -64,8 +100,8 @@ class PDFService(BaseService):
             )
             self.db.add(page)
             
-            # Generate initial bounding boxes (mock AI detection)
-            bounding_boxes = self.generate_mock_detections(page.id, project_id, image.width, image.height)
+            # 🔥 AI DETECTION STEP (Real or Mock)
+            bounding_boxes = self.generate_detections(page.id, project_id, image)
             
             page_data.append({
                 "page_id": page.id,
@@ -76,10 +112,11 @@ class PDFService(BaseService):
                 "bounding_boxes": bounding_boxes
             })
 
-        # Update project
+        # Update project stats
         project.page_count = len(images)
         if page_data:
             project.pdf_url = page_data[0]["image_url"]  # First page as thumbnail
+        
         self.db.commit()
 
         return {
@@ -88,8 +125,60 @@ class PDFService(BaseService):
             "pageCount": len(images),
         }
 
+    def generate_detections(self, page_id: str, project_id: str, image: Image.Image):
+        """
+        Runs actual YOLO inference if model is loaded, otherwise returns mocks.
+        """
+        if ai_model:
+            try:
+                results = ai_model(image)
+                bounding_boxes = []
+                
+                # Parse YOLO results
+                for result in results:
+                    boxes = result.boxes.cpu().numpy()
+                    for box in boxes:
+                        x1, y1, x2, y2 = box.xyxy[0]
+                        conf = float(box.conf[0])
+                        cls = int(box.cls[0])
+                        label = result.names[cls]
+                        
+                        # Create DB Record
+                        bb_id = str(uuid.uuid4())
+                        detection_record = Detection(
+                            id=bb_id,
+                            page_id=page_id,
+                            project_id=project_id,
+                            class_name=label,
+                            confidence=conf,
+                            bbox_x1=float(x1),
+                            bbox_y1=float(y1),
+                            bbox_x2=float(x2),
+                            bbox_y2=float(y2),
+                            is_manual=False
+                        )
+                        self.db.add(detection_record)
+                        
+                        # Add to return list
+                        bounding_boxes.append({
+                            "id": bb_id,
+                            "x1": float(x1), "y1": float(y1),
+                            "x2": float(x2), "y2": float(y2),
+                            "label": label,
+                            "confidence": conf,
+                            "is_manual": False
+                        })
+                return bounding_boxes
+            except Exception as e:
+                print(f"AI Inference failed: {e}. Falling back to mocks.")
+                return self.generate_mock_detections(page_id, project_id, image.width, image.height)
+        
+        else:
+            # Fallback to Mock Data
+            return self.generate_mock_detections(page_id, project_id, image.width, image.height)
+
     def generate_mock_detections(self, page_id: str, project_id: str, image_width: int, image_height: int):
-        """Generate mock HVAC component detections with bounding boxes"""
+        """Generate mock HVAC component detections for testing without AI model"""
         mock_detections = [
             {"x1": 100, "y1": 150, "x2": 180, "y2": 210, "label": "Duct", "confidence": 0.85},
             {"x1": 250, "y1": 200, "x2": 370, "y2": 280, "label": "AC Unit", "confidence": 0.92},
@@ -112,23 +201,21 @@ class PDFService(BaseService):
                 project_id=project_id,
                 class_name=detection["label"],
                 confidence=detection["confidence"],
-                bbox_x1=x1,
-                bbox_y1=y1,
-                bbox_x2=x2,
-                bbox_y2=y2,
+                bbox_x1=x1, bbox_y1=y1,
+                bbox_x2=x2, bbox_y2=y2,
                 is_manual=False
             )
             self.db.add(detection_record)
+            
             bounding_boxes.append({
                 "id": bb_id,
-                "x1": x1,
-                "y1": y1,
-                "x2": x2,
-                "y2": y2,
+                "x1": x1, "y1": y1,
+                "x2": x2, "y2": y2,
                 "width": x2 - x1,
                 "height": y2 - y1,
                 "label": detection["label"],
-                "confidence": detection["confidence"]
+                "confidence": detection["confidence"],
+                "is_manual": False
             })
         
         return bounding_boxes
@@ -152,8 +239,6 @@ class PDFService(BaseService):
                     "y1": d.bbox_y1,
                     "x2": d.bbox_x2,
                     "y2": d.bbox_y2,
-                    "width": d.bbox_x2 - d.bbox_x1,
-                    "height": d.bbox_y2 - d.bbox_y1,
                     "label": d.class_name,
                     "confidence": d.confidence,
                     "is_manual": d.is_manual

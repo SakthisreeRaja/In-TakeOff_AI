@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class DetectionCreate(BaseModel):
     project_id: str
-    page_number: int
+    page_id: str = Field(..., description="UUID of the page") 
     class_name: str
     confidence: float
     bbox_x1: float
@@ -12,7 +12,7 @@ class DetectionCreate(BaseModel):
     bbox_x2: float
     bbox_y2: float
     notes: Optional[str] = None
-    is_manual: bool = False
+    is_manual: bool = True 
 
 class DetectionUpdate(BaseModel):
     bbox_x1: Optional[float] = None
@@ -33,7 +33,7 @@ class DetectionResponse(BaseModel):
     bbox_y1: float
     bbox_x2: float
     bbox_y2: float
-    notes: Optional[str]
+    notes: Optional[str] = None
     is_manual: bool
     created_at: datetime
 
