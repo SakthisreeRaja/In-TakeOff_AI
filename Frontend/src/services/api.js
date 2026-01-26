@@ -35,6 +35,15 @@ export async function getUser(userId) {
   return res.json()
 }
 
+export async function updateUser(userId, payload) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  return handleResponse(res)
+}
+
 /* =========================
    PROJECTS
    ========================= */

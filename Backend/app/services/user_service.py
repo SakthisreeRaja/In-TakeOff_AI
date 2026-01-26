@@ -36,6 +36,12 @@ class UserService(BaseService):
             # Set default profile image if missing
             if "profile_image_url" not in user_data:
                 user_data["profile_image_url"] = ""
+            
+            # Set default company and phone if missing
+            if "company" not in user_data:
+                user_data["company"] = ""
+            if "phone" not in user_data:
+                user_data["phone"] = ""
                 
             user = User(**user_data)
             self.db.add(user)

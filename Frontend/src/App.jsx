@@ -5,6 +5,8 @@ import Dashboard from "./pages/Dashboard"
 import Projects from "./pages/Projects"
 import ProjectEditor from "./pages/ProjectEditor"
 import SignIn from "./pages/SignIn"
+import Settings from "./pages/Settings"
+import NewProject from "./pages/NewProject"
 import { getUser } from "./services/api" // Import the new check function
 
 function RequireAuth({ children }) {
@@ -57,7 +59,9 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/new" element={<NewProject />} />
                 <Route path="/projects/:id" element={<ProjectEditor />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </Layout>
           </RequireAuth>

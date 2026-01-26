@@ -15,6 +15,8 @@ class User(Base):
     last_name: Mapped[str] = mapped_column(String)
     profile_image_url: Mapped[str] = mapped_column(String, nullable=True, default="")
     role: Mapped[str] = mapped_column(String, default="estimator")
+    company: Mapped[str] = mapped_column(String, nullable=True, default="")
+    phone: Mapped[str] = mapped_column(String, nullable=True, default="")
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
