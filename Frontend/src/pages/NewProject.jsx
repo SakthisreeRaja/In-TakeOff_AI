@@ -72,16 +72,15 @@ export default function NewProject() {
         status: "draft"
       })
 
-      // Upload PDF if provided
-      if (file) {
-        await uploadProjectPDF(project.id, file)
-      }
+      // Navigate to editor immediately
+      // Pass the file in state so the editor can upload it in background
+      navigate(`/projects/${project.id}`, { 
+        state: { uploadFile: file } 
+      })
 
-      navigate(`/projects/${project.id}`)
     } catch (err) {
       console.error("Error creating project:", err)
       setError(err.message || "Failed to create project")
-    } finally {
       setLoading(false)
     }
   }

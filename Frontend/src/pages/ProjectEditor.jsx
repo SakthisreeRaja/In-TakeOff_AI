@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useLocation } from "react-router-dom"
 import EditorHeader from "../components/editor/EditorHeader"
 import EditorSettings from "../components/editor/EditorSettings"
 import EditorCanvas from "../components/editor/EditorCanvas"
@@ -15,20 +15,23 @@ import {
 export default function ProjectEditor() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const location = useLocation()
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
 
   const [project, setProject] = useState(null)
   const [pages, setPages] = useState([])
   const [activeTool, setActiveTool] = useState("select")
+  const [activePageIdx, setActivePageIdx] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const createdRef = useRef(false)
+  const pollingIntervalRef = useRef(null)
 
   const userId = localStorage.getItem("user_id")
 
   // --- Logic to get the Active Page ---
-  // Currently defaults to the first page. 
-  // You can add state later for multi-page switching: const [activePageIdx, setActivePageIdx] = useState(0)
-  const activePage = pages.length > 0 ? pages[0] : null
+  const activePage = pages.length > 0 ? pages[activePageIdx] : null
   
   // --- Hook: Fetch Detections for the Active Page ---
   const { detections, add, remove, update } = useDetections(activePage?.page_id)
@@ -59,12 +62,60 @@ export default function ProjectEditor() {
         const p = list.find(x => x.id === id)
         if (!p) return
         setProject(p)
-        getProjectPages(p.id).then(res => {
-          setPages(res.pages || [])
-        })
+        fetchPages(p.id)
       })
     }
   }, [id, navigate, userId])
+
+  // Handle file upload from NewProject page
+  useEffect(() => {
+    if (location.state?.uploadFile && project && !isUploading) {
+      const file = location.state.uploadFile
+      // Clear the state to prevent re-upload on navigation
+      window.history.replaceState({}, document.title)
+      handlePDFUpload(file)
+    }
+  }, [location.state, project, isUploading])
+
+  // Fetch pages function
+  const fetchPages = async (projectId) => {
+    try {
+      const res = await getProjectPages(projectId)
+      setPages(res.pages || [])
+      
+      // If we're still processing and no pages yet, start polling
+      if ((!res.pages || res.pages.length === 0) && isProcessing) {
+        startPolling(projectId)
+      } else if (res.pages && res.pages.length > 0) {
+        setIsProcessing(false)
+        stopPolling()
+      }
+    } catch (error) {
+      console.error("Error fetching pages:", error)
+    }
+  }
+
+  // Start polling for page updates
+  const startPolling = (projectId) => {
+    if (pollingIntervalRef.current) return // Already polling
+    
+    pollingIntervalRef.current = setInterval(() => {
+      fetchPages(projectId)
+    }, 2000) // Poll every 2 seconds
+  }
+
+  // Stop polling
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+  }
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => stopPolling()
+  }, [])
 
   const [filters, setFilters] = useState({
     Diffuser: true,
@@ -127,10 +178,23 @@ export default function ProjectEditor() {
   async function handlePDFUpload(file) {
     if (!project) return
 
-    await uploadProjectPDF(project.id, file)
+    setIsUploading(true)
+    setIsProcessing(true)
 
-    const res = await getProjectPages(project.id)
-    setPages(res.pages || [])
+    try {
+      await uploadProjectPDF(project.id, file)
+      
+      // Start polling for pages
+      startPolling(project.id)
+      
+      // Initial fetch
+      await fetchPages(project.id)
+    } catch (error) {
+      console.error("Error uploading PDF:", error)
+      setIsProcessing(false)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
@@ -179,7 +243,37 @@ export default function ProjectEditor() {
         </div>
 
         <div className="flex-1 min-w-0 overflow-hidden relative bg-black">
-          {/* UPDATED: Passing correct props to EditorCanvas */}
+          {/* Page Navigation - Show if multiple pages */}
+          {pages.length > 1 && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-zinc-900/95 border border-zinc-800 rounded-lg px-4 py-2 flex items-center gap-3">
+              <button
+                onClick={() => setActivePageIdx(Math.max(0, activePageIdx - 1))}
+                disabled={activePageIdx === 0}
+                className="text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                ←
+              </button>
+              <span className="text-white text-sm font-medium">
+                Page {activePageIdx + 1} of {pages.length}
+              </span>
+              <button
+                onClick={() => setActivePageIdx(Math.min(pages.length - 1, activePageIdx + 1))}
+                disabled={activePageIdx === pages.length - 1}
+                className="text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                →
+              </button>
+            </div>
+          )}
+
+          {/* Processing indicator */}
+          {isProcessing && (
+            <div className="absolute top-4 right-4 z-10 bg-blue-600/90 border border-blue-500 rounded-lg px-4 py-2 flex items-center gap-2">
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span className="text-white text-sm font-medium">Processing PDF...</span>
+            </div>
+          )}
+
           <EditorCanvas
             activeTool={activeTool}
             pages={pages}
@@ -187,12 +281,13 @@ export default function ProjectEditor() {
             detections={detections}
             onAddDetection={(box) => add({ 
                 ...box, 
-                project_id: project.id, 
-                // page_id is handled by the hook/API URL, but good to include in payload if needed
+                project_id: project?.id, 
                 page_id: activePage?.page_id 
             })}
             onDeleteDetection={remove}
             onUpload={() => fileInputRef.current.click()}
+            isProcessing={isProcessing}
+            isUploading={isUploading}
           />
         </div>
 
