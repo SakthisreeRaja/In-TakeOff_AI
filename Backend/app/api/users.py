@@ -12,9 +12,17 @@ def create_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
 ):
-    user_data = payload.model_dump()
-    user_data['id'] = user_data.get('id') or str(__import__('uuid').uuid4())
-    return UserService(db).upsert_user(user_data)
+    try:
+        user_data = payload.model_dump()
+        # Generate UUID if not provided
+        if not user_data.get('id'):
+            user_data['id'] = str(__import__('uuid').uuid4())
+        
+        user = UserService(db).upsert_user(user_data)
+        return user
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/{user_id}", response_model=UserRead)
 def get_user(user_id: str, db: Session = Depends(get_db)):

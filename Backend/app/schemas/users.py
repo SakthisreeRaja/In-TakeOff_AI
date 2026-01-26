@@ -4,8 +4,8 @@ from datetime import datetime
 
 class UserBase(ORMBase):
     email: EmailStr
-    first_name: str | None = None
-    last_name: str | None = None
+    first_name: str
+    last_name: str
     profile_image_url: str | None = None
     role: str = "estimator"
 

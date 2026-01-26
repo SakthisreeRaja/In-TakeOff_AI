@@ -3,6 +3,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api"
 async function handleResponse(res) {
   if (!res.ok) {
     const err = await res.text()
+    // Safety Net: If backend says invalid user, force logout
     if (res.status === 400 && err.includes("User not found")) {
        localStorage.removeItem("user_id")
        window.location.href = "/signin"
@@ -25,7 +26,7 @@ export async function createUser(payload) {
   return handleResponse(res)
 }
 
-// 🔥 NEW FUNCTION: Verifies if the user exists
+// 🔥 Verifies if the user exists (Used by App.jsx)
 export async function getUser(userId) {
   const res = await fetch(`${API_BASE}/users/${userId}`)
   if (!res.ok) {
@@ -39,7 +40,10 @@ export async function getUser(userId) {
    ========================= */
 
 export async function getProjects() {
-  const res = await fetch(`${API_BASE}/projects/`)
+  const userId = localStorage.getItem("user_id")
+  if (!userId) return [] // If no user, return empty list immediately
+
+  const res = await fetch(`${API_BASE}/projects/?user_id=${userId}`)
   return handleResponse(res)
 }
 

@@ -21,10 +21,15 @@ export default function SignIn() {
         role: "estimator",
       })
 
+      if (!user || !user.id) {
+        throw new Error("Invalid response from server")
+      }
+
       localStorage.setItem("user_id", user.id)
       navigate("/projects", { replace: true })
     } catch (err) {
-      setError("Unable to sign in")
+      console.error("Sign in error:", err)
+      setError(err.message || "Unable to sign in. Please try again.")
     } finally {
       setLoading(false)
     }
