@@ -96,7 +96,7 @@ export default function NewProject() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm text-zinc-400 mb-2">
-              Project Name <span className="text-red-400">*</span>
+              Project Name 
             </label>
             <input
               type="text"
@@ -123,7 +123,7 @@ export default function NewProject() {
 
           <div>
             <label className="block text-sm text-zinc-400 mb-2">
-              Upload PDF (Optional)
+              Upload PDF
             </label>
             
             {!file ? (
