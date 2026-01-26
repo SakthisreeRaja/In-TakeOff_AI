@@ -25,6 +25,7 @@ export default function ProjectEditor() {
   const [activePageIdx, setActivePageIdx] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const createdRef = useRef(false)
   const pollingIntervalRef = useRef(null)
 
@@ -58,9 +59,13 @@ export default function ProjectEditor() {
     }
 
     if (id !== "new") {
+      setIsInitialLoading(true)
       getProjects().then(list => {
         const p = list.find(x => x.id === id)
-        if (!p) return
+        if (!p) {
+          setIsInitialLoading(false)
+          return
+        }
         setProject(p)
         fetchPages(p.id)
       })
@@ -82,6 +87,7 @@ export default function ProjectEditor() {
     try {
       const res = await getProjectPages(projectId)
       setPages(res.pages || [])
+      setIsInitialLoading(false)
       
       // If we're still processing and no pages yet, start polling
       if ((!res.pages || res.pages.length === 0) && isProcessing) {
@@ -92,6 +98,7 @@ export default function ProjectEditor() {
       }
     } catch (error) {
       console.error("Error fetching pages:", error)
+      setIsInitialLoading(false)
     }
   }
 
@@ -288,6 +295,7 @@ export default function ProjectEditor() {
             onUpload={() => fileInputRef.current.click()}
             isProcessing={isProcessing}
             isUploading={isUploading}
+            isInitialLoading={isInitialLoading}
           />
         </div>
 

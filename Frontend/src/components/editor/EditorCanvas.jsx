@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function EditorCanvas({ activeTool, pages, activePageId, detections, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading }) {
+export default function EditorCanvas({ activeTool, pages, activePageId, detections, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading }) {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -94,7 +94,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   };
 
   // 4. Loading State
-  if (isProcessing || isUploading) {
+  if (isProcessing || isUploading || isInitialLoading) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
         <div className="text-center text-zinc-400 p-4">
