@@ -10,6 +10,7 @@ import {
   getProjects,
   uploadProjectPDF,
   getProjectPages,
+  runDetectionOnPage,
 } from "../services/api"
 
 export default function ProjectEditor() {
@@ -26,6 +27,7 @@ export default function ProjectEditor() {
   const [isUploading, setIsUploading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const [isRunningDetection, setIsRunningDetection] = useState(false)
   const createdRef = useRef(false)
   const pollingIntervalRef = useRef(null)
 
@@ -35,7 +37,7 @@ export default function ProjectEditor() {
   const activePage = pages.length > 0 ? pages[activePageIdx] : null
   
   // --- Hook: Fetch Detections for the Active Page ---
-  const { detections, add, remove, update } = useDetections(activePage?.page_id)
+  const { detections, add, remove, update, refresh } = useDetections(activePage?.page_id)
 
   useEffect(() => {
     if (!userId) {
@@ -204,11 +206,36 @@ export default function ProjectEditor() {
     }
   }
 
+  async function handleRunDetection() {
+    if (!activePage) {
+      alert("Please select a page first")
+      return
+    }
+
+    setIsRunningDetection(true)
+    try {
+      const result = await runDetectionOnPage(activePage.page_id)
+      console.log("Detection result:", result)
+      
+      // Refresh detections for current page
+      await refresh()
+      
+      alert(`Detection completed! Found ${result.detections_count} objects.`)
+    } catch (error) {
+      console.error("Error running detection:", error)
+      alert("Failed to run detection. Please try again.")
+    } finally {
+      setIsRunningDetection(false)
+    }
+  }
+
   return (
     <div ref={containerRef} className="flex flex-col h-full min-h-screen overflow-hidden">
       <EditorHeader
         projectName={project ? project.name : "Project"}
         onBack={() => navigate("/projects")}
+        onRunDetection={handleRunDetection}
+        isRunningDetection={isRunningDetection}
       />
 
       <input

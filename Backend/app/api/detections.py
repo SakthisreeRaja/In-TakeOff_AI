@@ -33,3 +33,9 @@ def update_detection(detection_id: str, payload: DetectionUpdate, db: Session = 
 def delete_detection(detection_id: str, db: Session = Depends(get_db)):
     DetectionService(db).delete_detection(detection_id)
     return {"status": "deleted"}
+
+# 🔥 NEW: Run detection on a specific page
+@router.post("/run/{page_id}")
+async def run_detection_on_page(page_id: str, db: Session = Depends(get_db)):
+    """Run AI detection on a specific page"""
+    return await DetectionService(db).run_detection_for_page(page_id)

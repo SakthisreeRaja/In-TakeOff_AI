@@ -117,3 +117,10 @@ export async function deleteDetection(detectionId) {
   })
   if (!res.ok) throw new Error("Failed to delete")
 }
+
+export async function runDetectionOnPage(pageId) {
+  const res = await fetch(`${API_BASE}/detections/run/${pageId}`, {
+    method: "POST",
+  })
+  return handleResponse(res)
+}

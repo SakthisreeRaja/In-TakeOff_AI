@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from app.models.detections import Detection
 from app.models.pages import Page
 from app.services.base import BaseService
+import requests
+from PIL import Image
+from io import BytesIO
 
 class DetectionService(BaseService):
 
@@ -64,3 +67,32 @@ class DetectionService(BaseService):
 
         self.db.delete(detection)
         self.db.commit()
+
+    async def run_detection_for_page(self, page_id: str):
+        """Run AI detection on a specific page"""
+        page = self._get_page(page_id)
+        
+        # Download the image from Cloudinary
+        try:
+            response = requests.get(page.image_url)
+            response.raise_for_status()
+            image = Image.open(BytesIO(response.content))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to load image: {str(e)}")
+        
+        # Import PDFService to use its generate_detections method
+        from app.services.pdf_service import PDFService
+        pdf_service = PDFService(self.db)
+        
+        # Run detection
+        bounding_boxes = pdf_service.generate_detections(page_id, page.project_id, image)
+        
+        # Commit the detections
+        self.db.commit()
+        
+        return {
+            "message": "Detection completed",
+            "page_id": page_id,
+            "detections_count": len(bounding_boxes),
+            "detections": bounding_boxes
+        }

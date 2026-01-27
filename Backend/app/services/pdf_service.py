@@ -100,8 +100,7 @@ class PDFService(BaseService):
             )
             self.db.add(page)
             
-            # 🔥 AI DETECTION STEP (Real or Mock)
-            bounding_boxes = self.generate_detections(page.id, project_id, image)
+            # ✅ NO AUTO-DETECTION - User must click "Run Detection" button
             
             page_data.append({
                 "page_id": page.id,
@@ -109,7 +108,7 @@ class PDFService(BaseService):
                 "image_url": upload_result["url"],
                 "width": image.width,
                 "height": image.height,
-                "bounding_boxes": bounding_boxes
+                "bounding_boxes": []  # Empty - will be filled when user runs detection
             })
 
         # Update project stats

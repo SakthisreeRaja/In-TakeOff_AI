@@ -1,6 +1,6 @@
 import { FiArrowLeft, FiPlay, FiSave, FiDownload } from "react-icons/fi"
 
-export default function EditorHeader({ projectName, onBack }) {
+export default function EditorHeader({ projectName, onBack, onRunDetection, isRunningDetection }) {
   return (
     <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
@@ -22,9 +22,13 @@ export default function EditorHeader({ projectName, onBack }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="flex items-center gap-2 bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-lg">
-          <FiPlay />
-          Run Detection
+        <button 
+          onClick={onRunDetection}
+          disabled={isRunningDetection}
+          className="flex items-center gap-2 bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-600/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <FiPlay className={isRunningDetection ? "animate-spin" : ""} />
+          {isRunningDetection ? "Running..." : "Run Detection"}
         </button>
 
         <button className="flex items-center gap-2 bg-zinc-800 px-3 py-1.5 rounded-lg">

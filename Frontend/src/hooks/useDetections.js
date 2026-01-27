@@ -9,9 +9,14 @@ import {
 export default function useDetections(pageId) {
   const [detections, setDetections] = useState([])
 
-  useEffect(() => {
+  const fetchDetections = async () => {
     if (!pageId) return
-    getPageDetections(pageId).then(setDetections)
+    const data = await getPageDetections(pageId)
+    setDetections(data)
+  }
+
+  useEffect(() => {
+    fetchDetections()
   }, [pageId])
 
   async function add(box) {
@@ -29,5 +34,9 @@ export default function useDetections(pageId) {
     setDetections(v => v.filter(x => x.id !== id))
   }
 
-  return { detections, add, update, remove }
+  async function refresh() {
+    await fetchDetections()
+  }
+
+  return { detections, add, update, remove, refresh }
 }
