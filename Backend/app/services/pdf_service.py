@@ -80,12 +80,11 @@ class PDFService(BaseService):
             image.save(img_byte_arr, format='PNG')
             img_byte_arr.seek(0)
             
-            # Upload to Cloudinary
-            filename = f"{project_id}_page_{i}"
+            filename = f"{project_id}_{uuid.uuid4()}_page_{i}"
             upload_result = CloudinaryService.upload_image(
-                img_byte_arr.getvalue(), 
-                filename
-            )
+            img_byte_arr.getvalue(),
+            filename
+)
             
             # Create page record in database
             page_id = str(uuid.uuid4())

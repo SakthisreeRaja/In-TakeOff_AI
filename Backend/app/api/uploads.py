@@ -16,11 +16,6 @@ async def upload_pdf(
 ):
     """Upload PDF and convert to images stored in Cloudinary"""
     # Check if project already has pages
-    from app.models.pages import Page
-    existing_pages = db.query(Page).filter(Page.project_id == project_id).first()
-    if existing_pages:
-        # Return existing pages instead of re-processing
-        return PDFService(db).get_project_pages(project_id)
     
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files allowed")
