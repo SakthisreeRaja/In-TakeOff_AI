@@ -39,8 +39,8 @@ class CloudinaryService:
                 file_content,
                 public_id=f"images/{filename}",
                 transformation=[
-                    {"width": 1500, "height": 1500, "crop": "limit"},
-                    {"quality": "auto"}
+                    {"width": 4000, "height": 3500, "crop": "limit"},
+                    {"quality": 100 }
                 ]
             )
             return {
