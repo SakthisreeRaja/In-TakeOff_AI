@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List
+from typing import Dict, List, Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.detections import Detection
@@ -96,3 +96,55 @@ class DetectionService(BaseService):
             "detections_count": len(bounding_boxes),
             "detections": bounding_boxes
         }
+
+    async def batch_sync(self, page_id: str, operations: List[Any]):
+        """Batch process multiple detection operations"""
+        # Verify page exists
+        self._get_page(page_id)
+        
+        created_count = 0
+        updated_count = 0
+        deleted_count = 0
+        errors = []
+        
+        try:
+            for op in operations:
+                try:
+                    if op.operation == "create":
+                        if op.data:
+                            data = op.data.model_dump()
+                            data['page_id'] = page_id
+                            self.create_detection(data)
+                            created_count += 1
+                    
+                    elif op.operation == "update":
+                        if op.detection_id and op.updates:
+                            self.update_detection(
+                                op.detection_id,
+                                op.updates.model_dump(exclude_unset=True)
+                            )
+                            updated_count += 1
+                    
+                    elif op.operation == "delete":
+                        if op.detection_id:
+                            self.delete_detection(op.detection_id)
+                            deleted_count += 1
+                            
+                except Exception as e:
+                    errors.append(f"Operation {op.operation} failed: {str(e)}")
+            
+            # Get all detections for this page after operations
+            detections = self.get_detections_by_page(page_id)
+            
+            return {
+                "success": len(errors) == 0,
+                "created_count": created_count,
+                "updated_count": updated_count,
+                "deleted_count": deleted_count,
+                "errors": errors,
+                "detections": detections
+            }
+            
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=500, detail=f"Batch sync failed: {str(e)}")

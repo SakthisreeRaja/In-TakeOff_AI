@@ -3,7 +3,13 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.api.deps import get_db
-from app.schemas.detections import DetectionCreate, DetectionUpdate, DetectionResponse
+from app.schemas.detections import (
+    DetectionCreate, 
+    DetectionUpdate, 
+    DetectionResponse, 
+    BatchSyncRequest, 
+    BatchSyncResponse
+)
 from app.services.detection_service import DetectionService
 
 router = APIRouter(prefix="/detections", tags=["Detections"])
@@ -39,3 +45,9 @@ def delete_detection(detection_id: str, db: Session = Depends(get_db)):
 async def run_detection_on_page(page_id: str, db: Session = Depends(get_db)):
     """Run AI detection on a specific page"""
     return await DetectionService(db).run_detection_for_page(page_id)
+
+# 🔥 NEW: Batch sync endpoint for efficient syncing
+@router.post("/batch-sync", response_model=BatchSyncResponse)
+async def batch_sync_detections(payload: BatchSyncRequest, db: Session = Depends(get_db)):
+    """Batch sync multiple detection operations in one request"""
+    return await DetectionService(db).batch_sync(payload.page_id, payload.operations)

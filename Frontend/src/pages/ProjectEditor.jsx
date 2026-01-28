@@ -4,7 +4,9 @@ import EditorHeader from "../components/editor/EditorHeader"
 import EditorSettings from "../components/editor/EditorSettings"
 import EditorCanvas from "../components/editor/EditorCanvas"
 import EditorBOQ from "../components/editor/EditorBOQ"
+import UnsavedChangesModal from "../components/common/UnsavedChangesModal"
 import useDetections from "../hooks/useDetections"
+import pdfPreviewService from "../services/pdfPreviewService"
 import {
   createProject,
   getProjects,
@@ -28,6 +30,8 @@ export default function ProjectEditor() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRunningDetection, setIsRunningDetection] = useState(false)
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false)
+  const [previewPages, setPreviewPages] = useState([]) // Local preview before upload
 
   const createdRef = useRef(false)
   const pollingIntervalRef = useRef(null)
@@ -51,9 +55,24 @@ export default function ProjectEditor() {
   const activePage =
     sortedPages.length > 0 ? sortedPages[activePageIdx] : null
 
-  const { detections, add, remove, refresh } = useDetections(
+  const { detections, add, remove, refresh, syncStatus = {}, syncNow } = useDetections(
     activePage?.page_id
   )
+
+  // Warn user if leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
+      if (hasPendingChanges) {
+        e.preventDefault()
+        e.returnValue = "Your changes are still saving. Are you sure you want to leave?"
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [syncStatus])
 
   useEffect(() => {
     if (!userId) {
@@ -181,15 +200,87 @@ export default function ProjectEditor() {
 
   async function handlePDFUpload(file) {
     if (!project) return
+    
+    // Validate file
+    if (!file) {
+      alert('No file selected')
+      return
+    }
+    
+    if (!file.type || file.type !== 'application/pdf') {
+      alert('Please select a valid PDF file')
+      return
+    }
+    
+    if (file.size > 25 * 1024 * 1024) {
+      alert('File too large. Maximum size is 25MB')
+      return
+    }
+    
+    console.log('Starting PDF upload:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    })
+    
     setActivePageIdx(0)
     setIsUploading(true)
-    setIsProcessing(true)
+    
     try {
-      await uploadProjectPDF(project.id, file)
-      startPolling(project.id)
-      await fetchPages(project.id)
-    } finally {
-      setIsUploading(false)
+      // Step 1: Convert PDF to images CLIENT-SIDE (instant preview!)
+      console.log('Converting PDF to images...')
+      const convertedPages = await pdfPreviewService.convertPDFToImages(file)
+      
+      // Step 2: Show instant preview (local images)
+      const previewPagesData = convertedPages.map((page, index) => ({
+        page_id: `preview_${Date.now()}_${index}`,
+        page_number: page.pageNumber,
+        image_url: page.imageUrl, // Base64 data URL for instant display
+        width: page.width,
+        height: page.height,
+        isPreview: true, // Flag to indicate this is a local preview
+      }))
+      
+      setPreviewPages(previewPagesData)
+      setPages(previewPagesData) // Show immediately!
+      setIsUploading(false) // User can start working!
+      setIsProcessing(true) // Background upload in progress
+      
+      // Step 3: Upload to backend/Cloudinary in BACKGROUND
+      console.log('Uploading to Cloudinary in background...')
+      const result = await pdfPreviewService.uploadPagesToBackend(
+        project.id,
+        convertedPages
+      )
+      
+      // Step 4: Replace preview with real Cloudinary URLs
+      if (result.pages) {
+        setPages(result.pages)
+        setPreviewPages([])
+      }
+      
+      setIsProcessing(false)
+      console.log('Upload complete!')
+    } catch (error) {
+      console.error('PDF upload failed:', error)
+      
+      // Fallback: Try the old backend processing method
+      console.log('Attempting fallback to backend PDF processing...')
+      try {
+        setIsProcessing(true)
+        await uploadProjectPDF(project.id, file)
+        startPolling(project.id)
+        await fetchPages(project.id)
+        setIsUploading(false)
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError)
+        alert(error.message || 'Failed to process PDF. Please try again.')
+        setIsUploading(false)
+        setIsProcessing(false)
+      }
+      
+      setPreviewPages([])
+      setPages([])
     }
   }
 
@@ -207,13 +298,50 @@ export default function ProjectEditor() {
     }
   }
 
+  async function handleBackClick() {
+    // Check if there are pending changes from the detection sync
+    const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
+    
+    if (hasPendingChanges) {
+      setShowUnsavedModal(true)
+      return
+    }
+    
+    navigate("/projects")
+  }
+
+  async function handleConfirmLeave() {
+    setShowUnsavedModal(false)
+    
+    // Try to sync before leaving
+    if (syncStatus?.pendingCount && syncStatus.pendingCount > 0 && syncNow) {
+      try {
+        await syncNow() // Force sync
+      } catch (error) {
+        console.error("Failed to sync before leaving:", error)
+      }
+    }
+    
+    navigate("/projects")
+  }
+
   return (
     <div ref={containerRef} className="flex flex-col h-full min-h-screen overflow-hidden">
+      {/* Unsaved Changes Warning Modal */}
+      <UnsavedChangesModal
+        isOpen={showUnsavedModal}
+        onClose={() => setShowUnsavedModal(false)}
+        onConfirm={handleConfirmLeave}
+        pendingCount={syncStatus?.pendingCount || 0}
+        isSyncing={syncStatus?.syncing || false}
+      />
+
       <EditorHeader
         projectName={project ? project.name : "Project"}
-        onBack={() => navigate("/projects")}
+        onBack={handleBackClick}
         onRunDetection={handleRunDetection}
         isRunningDetection={isRunningDetection}
+        syncStatus={syncStatus}
       />
 
       <input

@@ -8,4 +8,17 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  optimizeDeps: {
+    include: ['pdfjs-dist']
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        // Ensure worker files are properly handled
+        manualChunks: {
+          'pdfjs': ['pdfjs-dist']
+        }
+      }
+    }
+  }
 })

@@ -117,6 +117,90 @@ class PDFService(BaseService):
             "pageCount": len(images),
         }
 
+    async def upload_pre_converted_pages(self, project_id: str, page_files: list):
+        """
+        Upload pre-converted page images (from client-side PDF processing)
+        This is faster because client already converted PDF to images
+        """
+        project = (
+            self.db.query(Project)
+            .filter(Project.id == project_id)
+            .first()
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Clear existing pages
+        existing_pages = (
+            self.db.query(Page)
+            .filter(Page.project_id == project_id)
+            .all()
+        )
+
+        for page in existing_pages:
+            self.db.query(Detection).filter(
+                Detection.page_id == page.id
+            ).delete()
+            self.db.delete(page)
+
+        project.page_count = 0
+        project.pdf_url = None
+        self.db.commit()
+
+        page_data = []
+
+        for i, page_file in enumerate(page_files, start=1):
+            try:
+                # Read the image file
+                image_bytes = await page_file.read()
+                image = Image.open(io.BytesIO(image_bytes))
+                
+                # Upload to Cloudinary
+                filename = f"{project_id}_{uuid.uuid4()}_page_{i}"
+                upload_result = CloudinaryService.upload_image(
+                    image_bytes,
+                    filename
+                )
+
+                page_id = str(uuid.uuid4())
+                page = Page(
+                    id=page_id,
+                    project_id=project_id,
+                    page_number=i,
+                    image_url=upload_result["url"],
+                    cloudinary_public_id=upload_result["public_id"],
+                    width=image.width,
+                    height=image.height,
+                )
+                self.db.add(page)
+
+                page_data.append({
+                    "page_id": page_id,
+                    "page_number": i,
+                    "image_url": upload_result["url"],
+                    "width": image.width,
+                    "height": image.height,
+                    "bounding_boxes": [],
+                })
+                
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to process page {i}: {str(e)}"
+                )
+
+        project.page_count = len(page_files)
+        if page_data:
+            project.pdf_url = page_data[0]["image_url"]
+
+        self.db.commit()
+
+        return {
+            "message": "Pages uploaded successfully",
+            "pages": page_data,
+            "pageCount": len(page_files),
+        }
+
     def generate_detections(self, page_id: str, project_id: str, image: Image.Image):
         if ai_model:
             try:

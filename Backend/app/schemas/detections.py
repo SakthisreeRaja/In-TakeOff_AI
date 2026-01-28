@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 
 class DetectionCreate(BaseModel):
@@ -39,3 +39,24 @@ class DetectionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class BatchOperation(BaseModel):
+    """Single operation in a batch sync"""
+    operation: Literal["create", "update", "delete"]
+    detection_id: Optional[str] = None  # Required for update/delete
+    data: Optional[DetectionCreate] = None  # Required for create
+    updates: Optional[DetectionUpdate] = None  # Required for update
+
+class BatchSyncRequest(BaseModel):
+    """Batch sync request for multiple detection operations"""
+    page_id: str
+    operations: List[BatchOperation]
+
+class BatchSyncResponse(BaseModel):
+    """Response from batch sync operation"""
+    success: bool
+    created_count: int
+    updated_count: int
+    deleted_count: int
+    errors: List[str] = []
+    detections: List[DetectionResponse]

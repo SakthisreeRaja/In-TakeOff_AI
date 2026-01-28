@@ -1,5 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
+from typing import List
 import uuid
 
 from app.api.deps import get_db
@@ -30,6 +31,34 @@ async def upload_pdf(
     await file.seek(0)
     
     return await PDFService(db).upload_and_convert(project_id, file)
+
+@router.post("/{project_id}/upload-pages")
+async def upload_pre_converted_pages(
+    project_id: str,
+    db: Session = Depends(get_db),
+    page_count: int = Form(...),
+    page_1: UploadFile = File(None),
+    page_2: UploadFile = File(None),
+    page_3: UploadFile = File(None),
+    page_4: UploadFile = File(None),
+    page_5: UploadFile = File(None),
+    page_6: UploadFile = File(None),
+    page_7: UploadFile = File(None),
+    page_8: UploadFile = File(None),
+    page_9: UploadFile = File(None),
+    page_10: UploadFile = File(None),
+):
+    """
+    Upload pre-converted page images from client-side PDF processing
+    This allows instant preview in browser while backend uploads to Cloudinary
+    """
+    pages = [page_1, page_2, page_3, page_4, page_5, page_6, page_7, page_8, page_9, page_10]
+    page_files = [p for p in pages[:page_count] if p is not None]
+    
+    if len(page_files) != page_count:
+        raise HTTPException(status_code=400, detail=f"Expected {page_count} pages but received {len(page_files)}")
+    
+    return await PDFService(db).upload_pre_converted_pages(project_id, page_files)
 
 # Additional Cloudinary endpoints
 @router.post("/upload-image")
