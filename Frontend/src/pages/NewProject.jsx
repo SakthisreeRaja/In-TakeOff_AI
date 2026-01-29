@@ -44,6 +44,15 @@ export default function NewProject() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
+        <button
+          onClick={() => navigate("/projects")}
+          className="flex items-center gap-2 text-zinc-400 hover:text-white mb-4 transition"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Back to Projects</span>
+        </button>
         <h2 className="text-white text-2xl font-semibold mb-2">Create New Project</h2>
         <p className="text-zinc-400">Create a project and upload your PDF in the editor</p>
       </div>

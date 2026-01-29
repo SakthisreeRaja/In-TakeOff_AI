@@ -110,12 +110,71 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     );
   }
 
-  // 5. Empty State
+  // 5. Uploading State
+  if (isUploading) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
+        <div className="text-center text-zinc-400 p-4">
+          <div className="mb-6">
+            <div className="animate-spin h-16 w-16 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+          </div>
+          <p className="mb-2 text-lg font-medium text-white">
+            Uploading PDF...
+          </p>
+          <p className="text-sm text-zinc-500">Please wait while we process your file</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 6. Empty State
   if (!activePage) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
         <div className="text-center text-zinc-400 p-4">
-          <div className="text-4xl mb-4">⬆️</div>
+          <div className="mb-6 relative">
+            {/* Animated Cloud Upload Icon */}
+            <svg 
+              className="w-24 h-24 mx-auto" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Cloud */}
+              <path 
+                d="M18.944 11.112C18.507 7.67 15.56 5 12 5 9.244 5 6.85 6.611 5.757 9.15 3.609 9.792 2 11.82 2 14c0 2.757 2.243 5 5 5h11c2.206 0 4-1.794 4-4a4.01 4.01 0 0 0-3.056-3.888z" 
+                stroke="currentColor" 
+                strokeWidth="1.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                className="animate-pulse"
+                style={{ animationDuration: '3s' }}
+              />
+              {/* Arrow */}
+              <g className="animate-bounce" style={{ animationDuration: '2s' }}>
+                <path 
+                  d="M12 12v7" 
+                  stroke="#3b82f6" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                <path 
+                  d="M9 16l3-3 3 3" 
+                  stroke="#3b82f6" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </g>
+            </svg>
+            {/* Floating dots animation */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute w-2 h-2 bg-blue-500 rounded-full animate-ping" style={{ top: '20%', left: '30%', animationDelay: '0s', animationDuration: '2s' }}></div>
+              <div className="absolute w-2 h-2 bg-blue-400 rounded-full animate-ping" style={{ top: '30%', right: '25%', animationDelay: '0.5s', animationDuration: '2s' }}></div>
+              <div className="absolute w-2 h-2 bg-blue-300 rounded-full animate-ping" style={{ bottom: '25%', left: '25%', animationDelay: '1s', animationDuration: '2s' }}></div>
+            </div>
+          </div>
           <p className="mb-2 text-lg font-medium">No Page Selected</p>
           <button onClick={onUpload} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium">
             Upload PDF
@@ -125,7 +184,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     );
   }
 
-  // 6. Render Canvas
+  // 7. Render Canvas
   return (
     <div 
       className="h-full w-full overflow-hidden bg-zinc-900 relative"

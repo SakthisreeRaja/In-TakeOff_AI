@@ -33,53 +33,103 @@ export default function SyncStatusIndicator({ uploadStatus }) {
   }, [])
 
   // Priority: PDF upload status > Detection sync status
-  let icon = "✓"
+  let iconType = "check"
   let text = "Synced"
   let color = "text-green-500"
   let bgColor = "bg-green-500/10"
-  let shouldSpin = false
+  let showGlow = false
 
   // Check PDF upload status first (higher priority)
   if (uploadStatus?.isUploading) {
     if (uploadStatus.stage === 'converting') {
-      icon = "📄"
+      iconType = "document"
       text = "Converting PDF..."
       color = "text-blue-500"
       bgColor = "bg-blue-500/10"
-      shouldSpin = false
+      showGlow = false
     } else if (uploadStatus.stage === 'uploading') {
-      icon = "☁️"
+      iconType = "cloud"
       text = "Syncing to Cloud..."
       color = "text-blue-500"
       bgColor = "bg-blue-500/10"
-      shouldSpin = true
+      showGlow = true
     } else if (uploadStatus.stage === 'complete') {
-      icon = "✓"
+      iconType = "check"
       text = "PDF Uploaded"
       color = "text-green-500"
       bgColor = "bg-green-500/10"
-      shouldSpin = false
+      showGlow = false
     } else if (uploadStatus.stage === 'error') {
-      icon = "!"
+      iconType = "error"
       text = "Upload Failed"
       color = "text-red-500"
       bgColor = "bg-red-500/10"
-      shouldSpin = false
+      showGlow = false
     }
   }
   // Then check detection sync status
   else if (status.syncing) {
-    icon = "↻"
+    iconType = "cloud"
     text = "Syncing..."
     color = "text-blue-500"
     bgColor = "bg-blue-500/10"
-    shouldSpin = true
+    showGlow = true
   } else if (status.pendingCount > 0) {
-    icon = "⏱"
+    iconType = "pending"
     text = `${status.pendingCount} pending`
     color = "text-yellow-500"
     bgColor = "bg-yellow-500/10"
-    shouldSpin = false
+    showGlow = false
+  }
+
+  const renderIcon = () => {
+    if (iconType === "cloud") {
+      return (
+        <div className="relative">
+          {showGlow && (
+            <div className="absolute inset-0 blur-md opacity-60 animate-pulse">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <path d="M18.944 11.112C18.507 7.67 15.56 5 12 5 9.244 5 6.85 6.611 5.757 9.15 3.609 9.792 2 11.82 2 14c0 2.757 2.243 5 5 5h11c2.206 0 4-1.794 4-4a4.01 4.01 0 0 0-3.056-3.888z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
+          <svg className="w-4 h-4 relative" viewBox="0 0 24 24" fill="none">
+            <path d="M18.944 11.112C18.507 7.67 15.56 5 12 5 9.244 5 6.85 6.611 5.757 9.15 3.609 9.792 2 11.82 2 14c0 2.757 2.243 5 5 5h11c2.206 0 4-1.794 4-4a4.01 4.01 0 0 0-3.056-3.888z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      )
+    }
+    if (iconType === "document") {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )
+    }
+    if (iconType === "check") {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+          <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )
+    }
+    if (iconType === "error") {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+          <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      )
+    }
+    if (iconType === "pending") {
+      return (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+          <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      )
+    }
   }
 
   return (
@@ -87,8 +137,8 @@ export default function SyncStatusIndicator({ uploadStatus }) {
       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${bgColor} border border-zinc-800`}
       title={status.lastSync ? `Last synced: ${new Date(status.lastSync).toLocaleTimeString()}` : "No recent sync"}
     >
-      <span className={`${color} ${shouldSpin ? 'animate-spin' : ''} text-sm font-medium`}>
-        {icon}
+      <span className={color}>
+        {renderIcon()}
       </span>
       <span className={`${color} text-xs font-medium`}>
         {text}
