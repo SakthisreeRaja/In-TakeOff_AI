@@ -420,6 +420,74 @@ class DetectionSyncService {
   getSyncStatus() {
     return { ...this.syncStatus }
   }
+
+  /**
+   * Cancel all pending sync operations (used when leaving project)
+   */
+  cancelAllPendingSyncs() {
+    // Clear all debounce timers
+    for (const [id, timer] of this.syncTimers) {
+      clearTimeout(timer)
+    }
+    this.syncTimers.clear()
+    
+    // Reset sync status
+    this.syncStatus = { syncing: false, lastSync: null, pendingCount: 0 }
+    this.notifyListeners()
+    
+    console.log("All pending syncs cancelled")
+  }
+
+  /**
+   * Force sync and wait (for when user confirms they want to save before leaving)
+   */
+  async forceSyncAllAndWait() {
+    // Cancel any debounced syncs
+    for (const [id, timer] of this.syncTimers) {
+      clearTimeout(timer)
+    }
+    this.syncTimers.clear()
+    
+    // Sync all pending items immediately
+    await this.syncAll()
+    
+    return true
+  }
+
+  /**
+   * Cleanup for a specific project (call when switching projects)
+   */
+  async cleanupForProject(projectId) {
+    // Cancel any pending syncs
+    this.cancelAllPendingSyncs()
+    
+    // Note: We don't clear local storage here because 
+    // the user might come back to the same project
+    // and we want to preserve their offline changes
+    console.log(`Cleanup completed for project ${projectId}`)
+  }
+
+  /**
+   * Hard reset - clear everything (for critical bugs or logout)
+   */
+  async hardReset() {
+    this.cancelAllPendingSyncs()
+    
+    if (this.db) {
+      // Clear all detections from IndexedDB
+      return new Promise((resolve, reject) => {
+        const transaction = this.db.transaction([STORE_NAME], "readwrite")
+        const store = transaction.objectStore(STORE_NAME)
+        const request = store.clear()
+
+        request.onsuccess = () => {
+          console.log("Hard reset completed - all local detections cleared")
+          resolve()
+        }
+        request.onerror = () => reject(request.error)
+      })
+    }
+  }
 }
 
 // Export singleton instance

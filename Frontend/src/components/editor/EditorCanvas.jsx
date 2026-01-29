@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 export default function EditorCanvas({ activeTool, pages, activePageId, detections, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading }) {
   const containerRef = useRef(null);
+  const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -15,28 +16,53 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const activePage = pages.find(p => p.page_id === activePageId);
   const pageDetections = detections.filter(d => d.page_id === activePageId);
 
-  // 1. Handle Zoom/Pan
+  // Reset view when page changes (for proper isolation)
+  useEffect(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+    setCurrentBox(null);
+    setIsDrawing(false);
+  }, [activePageId]);
+
+  // 1. Handle Zoom (Only zoom on ctrl+wheel, no scroll panning)
   const handleWheel = (e) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      const s = Math.exp(-e.deltaY * 0.001);
-      setScale(prev => Math.min(Math.max(0.1, prev * s), 5));
-    } else {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      // Zoom centered on mouse position
+      const rect = canvasContainerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const newScale = Math.min(Math.max(0.1, scale * zoomFactor), 5);
+      
+      // Adjust position to zoom towards mouse pointer
+      const scaleChange = newScale / scale;
       setPosition(prev => ({
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY
+        x: mouseX - (mouseX - prev.x) * scaleChange,
+        y: mouseY - (mouseY - prev.y) * scaleChange
       }));
+      setScale(newScale);
     }
+    // No else - wheel scroll does NOT pan. Use pan tool for panning.
   };
 
   // 2. Coordinate Conversion (Screen <-> Image)
   const getMouseCoords = (e) => {
-    const rect = containerRef.current.getBoundingClientRect();
-    // Calculate position relative to the container center/offset
-    // This is a simplified version; in production, use a Matrix transformation library
+    // Use the outer canvas container for mouse position
+    const canvasRect = canvasContainerRef.current?.getBoundingClientRect();
+    if (!canvasRect) return { x: 0, y: 0 };
+    
+    // Mouse position relative to canvas container
+    const mouseX = e.clientX - canvasRect.left;
+    const mouseY = e.clientY - canvasRect.top;
+    
+    // Convert to image coordinates by reversing the transform
     return {
-      x: (e.clientX - rect.left - position.x) / scale,
-      y: (e.clientY - rect.top - position.y) / scale
+      x: (mouseX - position.x) / scale,
+      y: (mouseY - position.y) / scale
     };
   };
 
@@ -132,15 +158,14 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
         <div className="text-center text-zinc-400 p-4">
-          <div className="mb-6 relative">
-            {/* Animated Cloud Upload Icon */}
+          <div className="mb-6 relative w-24 h-24 mx-auto">
+            {/* Cloud Shape */}
             <svg 
-              className="w-24 h-24 mx-auto" 
+              className="w-24 h-24" 
               viewBox="0 0 24 24" 
               fill="none" 
               xmlns="http://www.w3.org/2000/svg"
             >
-              {/* Cloud */}
               <path 
                 d="M18.944 11.112C18.507 7.67 15.56 5 12 5 9.244 5 6.85 6.611 5.757 9.15 3.609 9.792 2 11.82 2 14c0 2.757 2.243 5 5 5h11c2.206 0 4-1.794 4-4a4.01 4.01 0 0 0-3.056-3.888z" 
                 stroke="currentColor" 
@@ -150,29 +175,23 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
                 className="animate-pulse"
                 style={{ animationDuration: '3s' }}
               />
-              {/* Arrow */}
-              <g className="animate-bounce" style={{ animationDuration: '2s' }}>
-                <path 
-                  d="M12 12v7" 
-                  stroke="#3b82f6" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                <path 
-                  d="M9 16l3-3 3 3" 
-                  stroke="#3b82f6" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-              </g>
             </svg>
-            {/* Floating dots animation */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="absolute w-2 h-2 bg-blue-500 rounded-full animate-ping" style={{ top: '20%', left: '30%', animationDelay: '0s', animationDuration: '2s' }}></div>
-              <div className="absolute w-2 h-2 bg-blue-400 rounded-full animate-ping" style={{ top: '30%', right: '25%', animationDelay: '0.5s', animationDuration: '2s' }}></div>
-              <div className="absolute w-2 h-2 bg-blue-300 rounded-full animate-ping" style={{ bottom: '25%', left: '25%', animationDelay: '1s', animationDuration: '2s' }}></div>
+            {/* Bouncing Arrow - Positioned separately for correct animation */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg 
+                className="w-8 h-8 animate-bounce mt-2" 
+                viewBox="0 0 24 24" 
+                fill="none"
+                style={{ animationDuration: '1.5s' }}
+              >
+                <path 
+                  d="M12 4v12M12 4l-4 4M12 4l4 4" 
+                  stroke="#3b82f6" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
             </div>
           </div>
           <p className="mb-2 text-lg font-medium">No Page Selected</p>
@@ -187,17 +206,21 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   // 7. Render Canvas
   return (
     <div 
+      ref={canvasContainerRef}
       className="h-full w-full overflow-hidden bg-zinc-900 relative"
+      style={{ cursor: activeTool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : activeTool === 'draw_box' ? 'crosshair' : 'default' }}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
     >
       <div
         ref={containerRef}
-        className="absolute origin-top-left transition-transform duration-75 ease-out"
+        className="absolute origin-top-left"
         style={{
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transition: isDragging || isDrawing ? 'none' : 'transform 75ms ease-out',
           width: activePage.width,
           height: activePage.height
         }}

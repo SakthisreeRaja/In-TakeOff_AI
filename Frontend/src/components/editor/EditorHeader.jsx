@@ -1,7 +1,19 @@
-import { FiArrowLeft, FiPlay, FiDownload, FiAlertCircle } from "react-icons/fi"
+import { FiArrowLeft, FiPlay, FiDownload, FiAlertCircle, FiChevronLeft, FiChevronRight } from "react-icons/fi"
 import SyncStatusIndicator from "../common/SyncStatusIndicator"
 
-export default function EditorHeader({ projectName, onBack, onRunDetection, isRunningDetection, syncStatus, uploadStatus }) {
+export default function EditorHeader({ 
+  projectName, 
+  onBack, 
+  onRunDetection, 
+  isRunningDetection, 
+  syncStatus, 
+  uploadStatus,
+  // Page navigation props
+  currentPage,
+  totalPages,
+  onPrevPage,
+  onNextPage
+}) {
   const hasPendingChanges = syncStatus?.syncing || syncStatus?.pendingCount > 0
   const hasUploadInProgress = uploadStatus?.isUploading
   const showWarning = hasPendingChanges || hasUploadInProgress
@@ -34,6 +46,29 @@ export default function EditorHeader({ projectName, onBack, onRunDetection, isRu
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Page Navigation - Moved here from canvas */}
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 bg-zinc-800/60 rounded-lg px-3 py-1.5 mr-2">
+            <button
+              onClick={onPrevPage}
+              disabled={currentPage === 1}
+              className="w-6 h-6 flex items-center justify-center rounded text-zinc-400 hover:text-white hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <FiChevronLeft size={16} />
+            </button>
+            <span className="text-sm text-zinc-300 min-w-[80px] text-center">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={onNextPage}
+              disabled={currentPage === totalPages}
+              className="w-6 h-6 flex items-center justify-center rounded text-zinc-400 hover:text-white hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <FiChevronRight size={16} />
+            </button>
+          </div>
+        )}
+
         <button 
           onClick={onRunDetection}
           disabled={isRunningDetection}

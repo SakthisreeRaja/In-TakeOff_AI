@@ -62,7 +62,7 @@ export default function ProjectEditor() {
   const activePage =
     sortedPages.length > 0 ? sortedPages[activePageIdx] : null
 
-  const { detections, add, remove, refresh, syncStatus = {}, syncNow } = useDetections(
+  const { detections, add, remove, refresh, syncStatus = {}, syncNow, cancelSync } = useDetections(
     activePage?.page_id
   )
 
@@ -81,6 +81,18 @@ export default function ProjectEditor() {
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [syncStatus, isProcessing])
+
+  // Cleanup on component unmount (leaving project)
+  useEffect(() => {
+    return () => {
+      // Stop polling when leaving
+      stopPolling()
+      // Cancel any pending syncs if we're just navigating away
+      if (cancelSync) {
+        cancelSync()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!userId) {
@@ -379,6 +391,22 @@ export default function ProjectEditor() {
   async function handleConfirmLeave() {
     setShowUnsavedModal(false)
     
+    // Stop any ongoing processes
+    stopPolling()
+    setIsProcessing(false)
+    
+    // Cancel pending syncs - user chose to leave without waiting
+    if (cancelSync) {
+      cancelSync()
+    }
+    
+    navigate("/projects")
+  }
+
+  // Function to force save and then leave
+  async function handleSaveAndLeave() {
+    setShowUnsavedModal(false)
+    
     // Try to sync before leaving
     if (syncStatus?.pendingCount && syncStatus.pendingCount > 0 && syncNow) {
       try {
@@ -387,6 +415,9 @@ export default function ProjectEditor() {
         console.error("Failed to sync before leaving:", error)
       }
     }
+    
+    // Stop polling after sync
+    stopPolling()
     
     navigate("/projects")
   }
@@ -415,6 +446,10 @@ export default function ProjectEditor() {
           isUploading: isProcessing, // Show as uploading when syncing to cloud
           stage: isProcessing ? 'uploading' : uploadStatus.stage
         }}
+        currentPage={sortedPages[activePageIdx]?.page_number || 1}
+        totalPages={sortedPages.length}
+        onPrevPage={() => setActivePageIdx(i => Math.max(0, i - 1))}
+        onNextPage={() => setActivePageIdx(i => Math.min(sortedPages.length - 1, i + 1))}
       />
 
       <input
@@ -440,28 +475,6 @@ export default function ProjectEditor() {
         <div onMouseDown={e => startResize("settings", e)} className="w-2 bg-zinc-900 hover:bg-zinc-800 flex-shrink-0 cursor-col-resize" />
 
         <div className="flex-1 min-w-0 overflow-hidden relative bg-black">
-          {sortedPages.length > 1 && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-zinc-900/95 border border-zinc-800 rounded-lg px-4 py-2 flex items-center gap-3">
-              <button
-                onClick={() => setActivePageIdx(i => Math.max(0, i - 1))}
-                disabled={activePageIdx === 0}
-              >
-                ←
-              </button>
-              <span>
-                Page {sortedPages[activePageIdx]?.page_number} of {sortedPages.length}
-              </span>
-              <button
-                onClick={() =>
-                  setActivePageIdx(i => Math.min(sortedPages.length - 1, i + 1))
-                }
-                disabled={activePageIdx === sortedPages.length - 1}
-              >
-                →
-              </button>
-            </div>
-          )}
-
           <EditorCanvas
             activeTool={activeTool}
             pages={sortedPages}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import detectionSyncService from "../services/detectionSyncService"
 
 /**
@@ -12,25 +12,48 @@ import detectionSyncService from "../services/detectionSyncService"
 export default function useDetections(pageId) {
   const [detections, setDetections] = useState([])
   const [syncStatus, setSyncStatus] = useState({ syncing: false, pendingCount: 0 })
+  const previousPageIdRef = useRef(null)
+  const isMountedRef = useRef(true)
 
   const fetchDetections = async () => {
-    if (!pageId) return
+    if (!pageId || !isMountedRef.current) return
     
     try {
       // Load from local storage first (instant)
       const localData = await detectionSyncService.getDetections(pageId)
+      if (!isMountedRef.current) return
       setDetections(localData.filter(d => d.syncStatus !== "pending_delete"))
 
       // Then merge with server data in background
       const mergedData = await detectionSyncService.loadAndMerge(pageId)
+      if (!isMountedRef.current) return
       setDetections(mergedData.filter(d => d.syncStatus !== "pending_delete"))
     } catch (error) {
       console.error("Failed to fetch detections:", error)
     }
   }
 
+  // Cleanup on unmount
   useEffect(() => {
-    fetchDetections()
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      // Cancel pending syncs when component unmounts (user leaves page)
+      detectionSyncService.cancelAllPendingSyncs()
+    }
+  }, [])
+
+  // Handle page changes - clear and reload
+  useEffect(() => {
+    if (previousPageIdRef.current !== pageId) {
+      // Clear detections when switching pages for isolation
+      setDetections([])
+      previousPageIdRef.current = pageId
+    }
+    
+    if (pageId) {
+      fetchDetections()
+    }
   }, [pageId])
 
   // Subscribe to sync status changes
@@ -105,6 +128,20 @@ export default function useDetections(pageId) {
     await fetchDetections()
   }
 
+  /**
+   * Cancel all pending syncs (for when leaving without saving)
+   */
+  function cancelSync() {
+    detectionSyncService.cancelAllPendingSyncs()
+  }
+
+  /**
+   * Force sync and wait (for when user wants to save before leaving)
+   */
+  async function forceSyncBeforeLeave() {
+    return await detectionSyncService.forceSyncAllAndWait()
+  }
+
   return { 
     detections, 
     add, 
@@ -112,6 +149,8 @@ export default function useDetections(pageId) {
     remove, 
     refresh,
     syncNow,
+    cancelSync,
+    forceSyncBeforeLeave,
     syncStatus
   }
 }
