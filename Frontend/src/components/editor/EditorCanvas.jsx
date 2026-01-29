@@ -24,29 +24,72 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     setIsDrawing(false);
   }, [activePageId]);
 
-  // 1. Handle Zoom (Only zoom on ctrl+wheel, no scroll panning)
+  // Prevent browser zoom on the canvas container (passive: false required)
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    // Prevent browser zoom with Ctrl+wheel
+    const preventBrowserZoom = (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+
+    // Prevent pinch-to-zoom on trackpad
+    const preventGestureZoom = (e) => {
+      e.preventDefault();
+    };
+
+    // Add event listeners with passive: false to allow preventDefault
+    container.addEventListener('wheel', preventBrowserZoom, { passive: false });
+    container.addEventListener('gesturestart', preventGestureZoom, { passive: false });
+    container.addEventListener('gesturechange', preventGestureZoom, { passive: false });
+    container.addEventListener('gestureend', preventGestureZoom, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', preventBrowserZoom);
+      container.removeEventListener('gesturestart', preventGestureZoom);
+      container.removeEventListener('gesturechange', preventGestureZoom);
+      container.removeEventListener('gestureend', preventGestureZoom);
+    };
+  }, []);
+
+  // Zoom limits
+  const MIN_ZOOM = 0.25;
+  const MAX_ZOOM = 5;
+
+  // 1. Handle Zoom (Mouse wheel and trackpad gestures - canvas only)
   const handleWheel = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = canvasContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Determine zoom factor based on wheel delta
+    // Support both regular wheel and trackpad pinch (which also sends wheel events)
+    let zoomFactor;
     if (e.ctrlKey || e.metaKey) {
-      // Zoom centered on mouse position
-      const rect = canvasContainerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-      const newScale = Math.min(Math.max(0.1, scale * zoomFactor), 5);
-      
-      // Adjust position to zoom towards mouse pointer
-      const scaleChange = newScale / scale;
-      setPosition(prev => ({
-        x: mouseX - (mouseX - prev.x) * scaleChange,
-        y: mouseY - (mouseY - prev.y) * scaleChange
-      }));
-      setScale(newScale);
+      // Trackpad pinch zoom (sends smaller deltas with ctrlKey)
+      zoomFactor = 1 - e.deltaY * 0.01;
+    } else {
+      // Regular mouse wheel zoom
+      zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     }
-    // No else - wheel scroll does NOT pan. Use pan tool for panning.
+    
+    const newScale = Math.min(Math.max(MIN_ZOOM, scale * zoomFactor), MAX_ZOOM);
+    
+    // Adjust position to zoom towards mouse pointer
+    const scaleChange = newScale / scale;
+    setPosition(prev => ({
+      x: mouseX - (mouseX - prev.x) * scaleChange,
+      y: mouseY - (mouseY - prev.y) * scaleChange
+    }));
+    setScale(newScale);
   };
 
   // 2. Coordinate Conversion (Screen <-> Image)
@@ -203,17 +246,35 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     );
   }
 
+  // Prevent right-click context menu on canvas
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
+  // Prevent drag start on canvas elements
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    return false;
+  };
+
   // 7. Render Canvas
   return (
     <div 
       ref={canvasContainerRef}
       className="h-full w-full overflow-hidden bg-zinc-900 relative"
-      style={{ cursor: activeTool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : activeTool === 'draw_box' ? 'crosshair' : 'default' }}
+      style={{ 
+        cursor: activeTool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : activeTool === 'draw_box' ? 'crosshair' : 'default',
+        touchAction: 'none', // Prevent browser gestures
+        userSelect: 'none',  // Prevent text selection
+      }}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onContextMenu={handleContextMenu}
+      onDragStart={handleDragStart}
     >
       <div
         ref={containerRef}
@@ -225,12 +286,23 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
           height: activePage.height
         }}
       >
-        {/* The PDF Image */}
+        {/* The PDF Image - Protected from drag/save/select */}
         <img 
           src={activePage.image_url} 
           alt="Blueprint" 
           className="pointer-events-none select-none"
-          style={{ maxWidth: 'none' }} // Prevent CSS constraints
+          style={{ 
+            maxWidth: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none',
+            WebkitUserDrag: 'none',
+            WebkitTouchCallout: 'none',
+          }}
+          draggable={false}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
         />
 
         {/* The Annotation Overlay */}
@@ -294,9 +366,34 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
         </svg>
       </div>
       
-      {/* HUD Info */}
-      <div className="absolute bottom-4 right-4 bg-zinc-900/90 px-3 py-1.5 rounded text-xs text-zinc-400 border border-zinc-800">
-        {Math.round(scale * 100)}% | {Math.round(position.x)}, {Math.round(position.y)}
+      {/* HUD Info & Zoom Controls */}
+      <div className="absolute bottom-4 right-4 flex items-center gap-2">
+        <div className="bg-zinc-900/90 rounded border border-zinc-800 flex items-center">
+          <button 
+            onClick={() => setScale(s => Math.max(MIN_ZOOM, s / 1.2))}
+            className="px-2 py-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-l transition-colors"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <span className="px-2 py-1 text-xs text-zinc-400 min-w-[50px] text-center border-x border-zinc-800">
+            {Math.round(scale * 100)}%
+          </span>
+          <button 
+            onClick={() => setScale(s => Math.min(MAX_ZOOM, s * 1.2))}
+            className="px-2 py-1 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button 
+            onClick={() => { setScale(1); setPosition({ x: 0, y: 0 }); }}
+            className="px-2 py-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-r border-l border-zinc-800 transition-colors text-xs"
+            title="Reset View"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </div>
   );
