@@ -44,7 +44,10 @@ export default function Projects() {
 
       {loading ? (
         <div className="flex items-center justify-center flex-1">
-          <div className="text-zinc-400">Loading projects...</div>
+          <div className="text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <div className="text-zinc-400">Loading projects </div>
+          </div>
         </div>
       ) : projects.length === 0 ? (
         <div className="flex items-center justify-center flex-1">

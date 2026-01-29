@@ -103,7 +103,6 @@ export default function ProjectEditor() {
     }
 
     if (id !== "new") {
-      setIsInitialLoading(true)
       getProjects().then(list => {
         const p = list.find(x => x.id === id)
         if (!p) {
@@ -120,9 +119,9 @@ export default function ProjectEditor() {
 
   const fetchPages = async projectId => {
     try {
+      setIsInitialLoading(true)
       const res = await getProjectPages(projectId)
       setPages(res.pages || [])
-      setIsInitialLoading(false)
 
       if ((!res.pages || res.pages.length === 0) && isProcessing) {
         startPolling(projectId)
@@ -130,6 +129,8 @@ export default function ProjectEditor() {
         setIsProcessing(false)
         stopPolling()
       }
+      
+      setIsInitialLoading(false)
     } catch {
       setIsInitialLoading(false)
     }
