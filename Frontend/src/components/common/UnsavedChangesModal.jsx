@@ -3,14 +3,16 @@ import { FiAlertCircle, FiX } from "react-icons/fi"
 
 /**
  * UnsavedChangesModal - Beautiful confirmation dialog
- * Shows when user tries to leave with pending sync
+ * Shows when user tries to leave with pending sync or PDF upload
  */
 export default function UnsavedChangesModal({ 
   isOpen, 
   onClose, 
   onConfirm, 
   pendingCount,
-  isSyncing 
+  isSyncing,
+  isUploading = false,
+  uploadStage = null
 }) {
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -25,6 +27,12 @@ export default function UnsavedChangesModal({
   }, [isOpen])
 
   if (!isOpen) return null
+
+  // Determine what's happening
+  const hasUploadInProgress = isUploading && uploadStage !== 'complete'
+  const uploadMessage = uploadStage === 'converting' ? '📄 Converting PDF...' : 
+                       uploadStage === 'uploading' ? '☁️ Uploading PDF to cloud...' : 
+                       '📄 PDF upload in progress'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -51,12 +59,18 @@ export default function UnsavedChangesModal({
 
         {/* Title */}
         <h3 className="text-xl font-semibold text-white mb-2">
-          {isSyncing ? "Changes Still Saving" : "Unsaved Changes"}
+          {hasUploadInProgress ? "Upload in Progress" : isSyncing ? "Changes Still Saving" : "Unsaved Changes"}
         </h3>
 
         {/* Message */}
         <p className="text-zinc-400 mb-6">
-          {isSyncing ? (
+          {hasUploadInProgress ? (
+            <>
+              {uploadMessage}
+              <br /><br />
+              If you leave now, the PDF upload will be interrupted and may not complete successfully.
+            </>
+          ) : isSyncing ? (
             <>
               Your changes are currently being saved to the server. 
               If you leave now, some changes might not be saved.

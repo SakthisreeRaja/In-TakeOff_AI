@@ -94,26 +94,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     }
   };
 
-  // 4. Loading State - only show if truly loading, not if we have preview pages
-  if (isUploading && (!pages || pages.length === 0)) {
-    // Only show loading if no preview pages yet
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
-        <div className="text-center text-zinc-400 p-4">
-          <div className="mb-6">
-            <div className="animate-spin h-16 w-16 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
-          </div>
-          <p className="mb-2 text-lg font-medium text-white">
-            Converting PDF...
-          </p>
-          <p className="text-sm text-zinc-500">
-            This will only take a moment
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
+  // 4. Loading State
   if (isInitialLoading) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
@@ -238,16 +219,6 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
       <div className="absolute bottom-4 right-4 bg-zinc-900/90 px-3 py-1.5 rounded text-xs text-zinc-400 border border-zinc-800">
         {Math.round(scale * 100)}% | {Math.round(position.x)}, {Math.round(position.y)}
       </div>
-      
-      {/* Preview Mode Indicator */}
-      {activePage?.isPreview && isProcessing && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-blue-600/90 border border-blue-500 rounded-lg px-4 py-2 flex items-center gap-2">
-          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-          <span className="text-white text-sm font-medium">
-            ⚡ Preview Mode - Uploading to cloud in background...
-          </span>
-        </div>
-      )}
     </div>
   );
 }

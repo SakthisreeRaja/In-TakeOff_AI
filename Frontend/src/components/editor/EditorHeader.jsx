@@ -1,8 +1,11 @@
 import { FiArrowLeft, FiPlay, FiDownload, FiAlertCircle } from "react-icons/fi"
 import SyncStatusIndicator from "../common/SyncStatusIndicator"
 
-export default function EditorHeader({ projectName, onBack, onRunDetection, isRunningDetection, syncStatus }) {
+export default function EditorHeader({ projectName, onBack, onRunDetection, isRunningDetection, syncStatus, uploadStatus }) {
   const hasPendingChanges = syncStatus?.syncing || syncStatus?.pendingCount > 0
+  const hasUploadInProgress = uploadStatus?.isUploading && uploadStatus?.stage !== 'complete'
+  const showWarning = hasPendingChanges || hasUploadInProgress
+  
   return (
     <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
@@ -11,11 +14,11 @@ export default function EditorHeader({ projectName, onBack, onRunDetection, isRu
             onClick={onBack}
             className="w-8 h-8 flex items-center justify-center rounded-md
               text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-            title={hasPendingChanges ? "You have unsaved changes" : "Back to projects"}
+            title={showWarning ? "You have unsaved changes" : "Back to projects"}
           >
             <FiArrowLeft size={18} />
           </button>
-          {hasPendingChanges && (
+          {showWarning && (
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-zinc-900 animate-pulse" 
                   title="Unsaved changes"
             />
@@ -27,7 +30,7 @@ export default function EditorHeader({ projectName, onBack, onRunDetection, isRu
         </h2>
 
         {/* Real-time Sync Status */}
-        <SyncStatusIndicator />
+        <SyncStatusIndicator uploadStatus={uploadStatus} />
       </div>
 
       <div className="flex items-center gap-3">
