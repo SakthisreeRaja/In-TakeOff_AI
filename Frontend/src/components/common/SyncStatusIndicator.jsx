@@ -49,10 +49,10 @@ export default function SyncStatusIndicator({ uploadStatus }) {
       shouldSpin = false
     } else if (uploadStatus.stage === 'uploading') {
       icon = "☁️"
-      text = "Uploading PDF..."
+      text = "Syncing to Cloud..."
       color = "text-blue-500"
       bgColor = "bg-blue-500/10"
-      shouldSpin = false
+      shouldSpin = true
     } else if (uploadStatus.stage === 'complete') {
       icon = "✓"
       text = "PDF Uploaded"

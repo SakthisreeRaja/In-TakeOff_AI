@@ -70,17 +70,17 @@ export default function ProjectEditor() {
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
-      const hasUploadInProgress = uploadStatus.isUploading && uploadStatus.stage !== 'complete'
+      const hasUploadInProgress = isProcessing // Check if cloud upload is still in progress
       if (hasPendingChanges || hasUploadInProgress) {
         e.preventDefault()
-        e.returnValue = "Your changes are still saving. Are you sure you want to leave?"
+        e.returnValue = "PDF is still uploading to cloud storage. Are you sure you want to leave?"
         return e.returnValue
       }
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [syncStatus, uploadStatus])
+  }, [syncStatus, isProcessing])
 
   useEffect(() => {
     if (!userId) {
@@ -96,6 +96,7 @@ export default function ProjectEditor() {
         user_id: userId,
       }).then(p => {
         setProject(p)
+        setIsInitialLoading(false) // No pages yet, show upload UI immediately
         navigate(`/projects/${p.id}`, { replace: true })
       })
       return
@@ -115,18 +116,7 @@ export default function ProjectEditor() {
     }
   }, [id, navigate, userId])
 
-  useEffect(() => {
-    // Only upload once per file - prevent infinite loop
-    if (location.state?.uploadFile && project && !uploadInitiatedRef.current) {
-      uploadInitiatedRef.current = true
-      const file = location.state.uploadFile
-      
-      // Clear the state immediately to prevent re-trigger
-      window.history.replaceState({}, document.title)
-      
-      handlePDFUpload(file)
-    }
-  }, [location.state?.uploadFile, project?.id])
+  // Remove this useEffect - no longer using uploadFile from state
 
   const fetchPages = async projectId => {
     try {
@@ -263,13 +253,13 @@ export default function ProjectEditor() {
       setPreviewPages(previewPagesData)
       setPages(previewPagesData) // Show immediately!
       setIsUploading(false) // User can start working!
-      setIsProcessing(true) // Background upload in progress
+      setIsProcessing(true) // Background upload in progress - shows "Syncing" indicator
       
       // Stop any existing polling to prevent interference
       stopPolling()
       
       setUploadStatus({
-        isUploading: true,
+        isUploading: false,
         stage: 'uploading',
         progress: 50,
         error: null
@@ -291,24 +281,14 @@ export default function ProjectEditor() {
       setIsProcessing(false)
       setUploadStatus({
         isUploading: false,
-        stage: 'complete',
-        progress: 100,
+        stage: null,
+        progress: 0,
         error: null
       })
-      console.log('Upload complete!')
+      console.log('Upload complete! Synced to cloud.')
       
       // Reset upload ref for next upload
       uploadInitiatedRef.current = false
-      
-      // Clear complete status after 3 seconds
-      setTimeout(() => {
-        setUploadStatus({
-          isUploading: false,
-          stage: null,
-          progress: 0,
-          error: null
-        })
-      }, 3000)
     } catch (error) {
       console.error('PDF upload failed:', error)
       
@@ -383,9 +363,9 @@ export default function ProjectEditor() {
   }
 
   async function handleBackClick() {
-    // Check if there are pending changes from the detection sync OR PDF upload
+    // Check if there are pending changes from the detection sync OR PDF upload to cloud
     const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
-    const hasUploadInProgress = uploadStatus.isUploading && uploadStatus.stage !== 'complete'
+    const hasUploadInProgress = isProcessing // Check if cloud upload is still in progress
     
     if (hasPendingChanges || hasUploadInProgress) {
       setShowUnsavedModal(true)
@@ -419,8 +399,8 @@ export default function ProjectEditor() {
         onConfirm={handleConfirmLeave}
         pendingCount={syncStatus?.pendingCount || 0}
         isSyncing={syncStatus?.syncing || false}
-        isUploading={uploadStatus.isUploading}
-        uploadStage={uploadStatus.stage}
+        isUploading={isProcessing}
+        uploadStage={isProcessing ? 'uploading' : null}
       />
 
       <EditorHeader
@@ -429,7 +409,11 @@ export default function ProjectEditor() {
         onRunDetection={handleRunDetection}
         isRunningDetection={isRunningDetection}
         syncStatus={syncStatus}
-        uploadStatus={uploadStatus}
+        uploadStatus={{
+          ...uploadStatus,
+          isUploading: isProcessing, // Show as uploading when syncing to cloud
+          stage: isProcessing ? 'uploading' : uploadStatus.stage
+        }}
       />
 
       <input

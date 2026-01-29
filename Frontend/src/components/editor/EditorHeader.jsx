@@ -3,7 +3,7 @@ import SyncStatusIndicator from "../common/SyncStatusIndicator"
 
 export default function EditorHeader({ projectName, onBack, onRunDetection, isRunningDetection, syncStatus, uploadStatus }) {
   const hasPendingChanges = syncStatus?.syncing || syncStatus?.pendingCount > 0
-  const hasUploadInProgress = uploadStatus?.isUploading && uploadStatus?.stage !== 'complete'
+  const hasUploadInProgress = uploadStatus?.isUploading
   const showWarning = hasPendingChanges || hasUploadInProgress
   
   return (

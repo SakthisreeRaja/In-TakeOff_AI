@@ -94,26 +94,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     }
   };
 
-  // 4. Loading State
-  if (isInitialLoading) {
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
-        <div className="text-center text-zinc-400 p-4">
-          <div className="mb-6">
-            <div className="animate-spin h-16 w-16 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
-          </div>
-          <p className="mb-2 text-lg font-medium text-white">
-            Loading Canvas...
-          </p>
-          <p className="text-sm text-zinc-500">
-            Processing the Document
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // 5. Empty State
+  // 4. Empty State
   if (!activePage) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-zinc-950">
