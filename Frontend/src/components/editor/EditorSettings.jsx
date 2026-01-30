@@ -6,7 +6,7 @@ import {
   FiMap, FiZoomIn, FiZoomOut, FiTrash2, FiLayers
 } from "react-icons/fi"
 
-export default function EditorSettings({ filters, setFilters, hidden, activeTool, setActiveTool, width }) {
+export default function EditorSettings({ filters, setFilters, selectedClass, setSelectedClass, hidden, activeTool, setActiveTool, width }) {
   const [activeTab, setActiveTab] = useState("tools")
 
   const isNarrow = width < 220
@@ -22,24 +22,40 @@ export default function EditorSettings({ filters, setFilters, hidden, activeTool
 
   const renderSettings = () => (
     <div className="animate-in fade-in duration-300">
-      <p className="text-xs text-zinc-400 mb-2 mt-2">Confidence Threshold: 15%</p>
-      <input type="range" className="w-full mb-6 accent-blue-500" />
-      <h4 className="text-sm font-semibold mb-3 text-zinc-200">Class Filters</h4>
+      <h4 className="text-sm font-semibold mb-3 text-zinc-200">Selected Class for Drawing</h4>
+      <div className="mb-4 p-2 bg-blue-600/10 border border-blue-500/50 rounded-lg">
+        <p className="text-xs text-blue-400 font-medium">{selectedClass}</p>
+      </div>
+      
+      <h4 className="text-sm font-semibold mb-3 text-zinc-200">Available Classes</h4>
       <div className="space-y-3 text-sm text-zinc-300">
         {classes.map(cls => (
-          <label key={cls} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors">
-            <input
-              type="checkbox"
-              checked={filters[cls]}
-              onChange={() => toggle(cls)}
-              className="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
-            />
-            {isNarrow ? (
-              <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
-            ) : (
-              <span>{cls.replace("_", " / ")}</span>
-            )}
-          </label>
+          <div key={cls} className="flex items-center gap-2">
+            <label className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors flex-1">
+              <input
+                type="checkbox"
+                checked={filters[cls]}
+                onChange={() => toggle(cls)}
+                className="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
+              />
+              {isNarrow ? (
+                <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
+              ) : (
+                <span>{cls.replace("_", " / ")}</span>
+              )}
+            </label>
+            <button
+              onClick={() => setSelectedClass(cls)}
+              className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${
+                selectedClass === cls
+                  ? "bg-blue-600 text-white"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+              }`}
+              title="Use for drawing"
+            >
+              {selectedClass === cls ? "✓" : "Use"}
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -151,7 +167,7 @@ export default function EditorSettings({ filters, setFilters, hidden, activeTool
             onClick={() => setActiveTab(activeTab === "settings" ? "" : "settings")}
             className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "settings" ? "text-blue-500" : "text-zinc-400"}`}
           >
-            <FiSliders size={16} /> <span>Settings</span>
+            <FiLayers size={16} /> <span>Class Filters</span>
           </button>
           {activeTab === "settings" && (
             <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
@@ -200,7 +216,7 @@ export default function EditorSettings({ filters, setFilters, hidden, activeTool
             activeTab === "settings" ? "border-blue-500 text-white" : "border-transparent text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <FiSliders /> Settings
+          <FiLayers /> Class Filters
         </button>
         <button
           onClick={() => setActiveTab("properties")}

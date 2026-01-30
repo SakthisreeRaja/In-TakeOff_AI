@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function EditorCanvas({ activeTool, pages, activePageId, detections, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading }) {
+export default function EditorCanvas({ activeTool, pages, activePageId, detections, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
   const containerRef = useRef(null);
   const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
   const [scale, setScale] = useState(1);
@@ -16,13 +16,46 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const activePage = pages.find(p => p.page_id === activePageId);
   const pageDetections = detections.filter(d => d.page_id === activePageId);
 
-  // Reset view when page changes (for proper isolation)
+  // Fit image to canvas when page changes or loads
   useEffect(() => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
     setCurrentBox(null);
     setIsDrawing(false);
-  }, [activePageId]);
+    
+    // Wait for next frame to ensure container has rendered with correct dimensions
+    requestAnimationFrame(() => {
+      if (!activePage || !canvasContainerRef.current) {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+        return;
+      }
+      
+      const container = canvasContainerRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      const imageWidth = activePage.width;
+      const imageHeight = activePage.height;
+      
+      if (containerWidth > 0 && containerHeight > 0 && imageWidth > 0 && imageHeight > 0) {
+        // Calculate scale to fit entire image with some padding
+        const padding = 40; // 40px padding on all sides
+        const scaleX = (containerWidth - padding * 2) / imageWidth;
+        const scaleY = (containerHeight - padding * 2) / imageHeight;
+        const fitScale = Math.min(scaleX, scaleY);
+        
+        // Center the image in the canvas
+        const scaledWidth = imageWidth * fitScale;
+        const scaledHeight = imageHeight * fitScale;
+        const centerX = (containerWidth - scaledWidth) / 2;
+        const centerY = (containerHeight - scaledHeight) / 2;
+        
+        setScale(fitScale);
+        setPosition({ x: centerX, y: centerY });
+      } else {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+      }
+    });
+  }, [activePageId, activePage]);
 
   // Prevent browser zoom on the canvas container (passive: false required)
   useEffect(() => {
@@ -154,7 +187,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
             bbox_y1: currentBox.y,
             bbox_x2: currentBox.x + currentBox.w,
             bbox_y2: currentBox.y + currentBox.h,
-            class_name: "Manual_Item", // Default class
+            class_name: selectedClass || "Manual_Item", // Use selected class
             confidence: 1.0,
             is_manual: true
         });

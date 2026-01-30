@@ -183,6 +183,8 @@ export default function ProjectEditor() {
     Louver: true,
   })
 
+  const [selectedClass, setSelectedClass] = useState("Manual_Item")
+
   const widths = useRef({ settings: 280, boq: 320 })
   const [layout, setLayout] = useState({ settings: 280, boq: 320 })
 
@@ -420,6 +422,8 @@ export default function ProjectEditor() {
           <EditorSettings
             filters={filters}
             setFilters={setFilters}
+            selectedClass={selectedClass}
+            setSelectedClass={setSelectedClass}
             activeTool={activeTool}
             setActiveTool={setActiveTool}
             hidden={layout.settings < 60}
@@ -443,6 +447,7 @@ export default function ProjectEditor() {
             isProcessing={isProcessing}
             isUploading={isUploading}
             isInitialLoading={isInitialLoading}
+            selectedClass={selectedClass}
           />
         </div>
 
