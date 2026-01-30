@@ -4,7 +4,6 @@ import EditorHeader from "../components/editor/EditorHeader"
 import EditorSettings from "../components/editor/EditorSettings"
 import EditorCanvas from "../components/editor/EditorCanvas"
 import EditorBOQ from "../components/editor/EditorBOQ"
-import UnsavedChangesModal from "../components/common/UnsavedChangesModal"
 import useDetections from "../hooks/useDetections"
 import pdfPreviewService from "../services/pdfPreviewService"
 import {
@@ -30,7 +29,6 @@ export default function ProjectEditor() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRunningDetection, setIsRunningDetection] = useState(false)
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false)
   const [previewPages, setPreviewPages] = useState([]) // Local preview before upload
   const [uploadStatus, setUploadStatus] = useState({
     isUploading: false,
@@ -66,21 +64,30 @@ export default function ProjectEditor() {
     activePage?.page_id
   )
 
-  // Warn user if leaving with unsaved changes or upload in progress
+  // Check if there are unsaved changes
+  const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
+  const hasUploadInProgress = isProcessing
+
+  // Warn user when refreshing page, closing tab, or closing browser
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
-      const hasUploadInProgress = isProcessing // Check if cloud upload is still in progress
-      if (hasPendingChanges || hasUploadInProgress) {
+      // Check conditions inside the handler to get latest values
+      const shouldWarn = hasPendingChanges || hasUploadInProgress
+      
+      console.log("beforeunload triggered:", { hasPendingChanges, hasUploadInProgress, shouldWarn })
+      
+      if (shouldWarn) {
+        // Standard way to trigger browser's "Leave site?" dialog
         e.preventDefault()
-        e.returnValue = "PDF is still uploading to cloud storage. Are you sure you want to leave?"
-        return e.returnValue
+        // Chrome/Edge requires returnValue to be set (even though the message is ignored)
+        e.returnValue = ""
+        return ""
       }
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [syncStatus, isProcessing])
+  }, [hasPendingChanges, hasUploadInProgress])
 
   // Cleanup on component unmount (leaving project)
   useEffect(() => {
@@ -376,65 +383,13 @@ export default function ProjectEditor() {
   }
 
   async function handleBackClick() {
-    // Check if there are pending changes from the detection sync OR PDF upload to cloud
-    const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
-    const hasUploadInProgress = isProcessing // Check if cloud upload is still in progress
-    
-    if (hasPendingChanges || hasUploadInProgress) {
-      setShowUnsavedModal(true)
-      return
-    }
-    
-    navigate("/projects")
-  }
-
-  async function handleConfirmLeave() {
-    setShowUnsavedModal(false)
-    
-    // Stop any ongoing processes
-    stopPolling()
-    setIsProcessing(false)
-    
-    // Cancel pending syncs - user chose to leave without waiting
-    if (cancelSync) {
-      cancelSync()
-    }
-    
-    navigate("/projects")
-  }
-
-  // Function to force save and then leave
-  async function handleSaveAndLeave() {
-    setShowUnsavedModal(false)
-    
-    // Try to sync before leaving
-    if (syncStatus?.pendingCount && syncStatus.pendingCount > 0 && syncNow) {
-      try {
-        await syncNow() // Force sync
-      } catch (error) {
-        console.error("Failed to sync before leaving:", error)
-      }
-    }
-    
-    // Stop polling after sync
-    stopPolling()
-    
+    // Just navigate back - no warning modal
+    // Browser beforeunload will still warn on refresh/close tab
     navigate("/projects")
   }
 
   return (
     <div ref={containerRef} className="flex flex-col h-full min-h-screen overflow-hidden">
-      {/* Unsaved Changes Warning Modal */}
-      <UnsavedChangesModal
-        isOpen={showUnsavedModal}
-        onClose={() => setShowUnsavedModal(false)}
-        onConfirm={handleConfirmLeave}
-        pendingCount={syncStatus?.pendingCount || 0}
-        isSyncing={syncStatus?.syncing || false}
-        isUploading={isProcessing}
-        uploadStage={isProcessing ? 'uploading' : null}
-      />
-
       <EditorHeader
         projectName={project ? project.name : "Project"}
         onBack={handleBackClick}
