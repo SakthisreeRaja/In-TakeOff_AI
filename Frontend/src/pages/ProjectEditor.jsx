@@ -183,7 +183,7 @@ export default function ProjectEditor() {
     Louver: true,
   })
 
-  const [selectedClass, setSelectedClass] = useState("Manual_Item")
+  const [selectedClass, setSelectedClass] = useState(null)
 
   const widths = useRef({ settings: 280, boq: 320 })
   const [layout, setLayout] = useState({ settings: 280, boq: 320 })
@@ -439,6 +439,7 @@ export default function ProjectEditor() {
             pages={sortedPages}
             activePageId={activePage?.page_id}
             detections={detections}
+            filters={filters}
             onAddDetection={box =>
               add({ ...box, project_id: project?.id, page_id: activePage?.page_id })
             }

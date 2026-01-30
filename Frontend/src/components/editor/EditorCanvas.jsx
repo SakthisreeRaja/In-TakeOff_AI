@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function EditorCanvas({ activeTool, pages, activePageId, detections, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
+export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
   const containerRef = useRef(null);
   const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
   const [scale, setScale] = useState(1);
@@ -14,7 +14,18 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const [currentBox, setCurrentBox] = useState(null);
 
   const activePage = pages.find(p => p.page_id === activePageId);
-  const pageDetections = detections.filter(d => d.page_id === activePageId);
+  // Filter detections based on page and checkbox filters
+  const pageDetections = detections.filter(d => {
+    if (d.page_id !== activePageId) return false;
+    // Check if this class is enabled in filters
+    const className = d.class_name;
+    // If filters has this class and it's false, hide it
+    if (filters && filters.hasOwnProperty(className)) {
+      return filters[className];
+    }
+    // For classes not in filters (like Manual_Item), always show
+    return true;
+  });
 
   // Fit image to canvas when page changes or loads
   useEffect(() => {

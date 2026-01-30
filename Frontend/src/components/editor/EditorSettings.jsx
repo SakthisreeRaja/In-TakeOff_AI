@@ -3,7 +3,7 @@ import {
   FiSliders, FiInfo, FiTool, 
   FiMousePointer, FiMove, FiSquare, FiPenTool, 
   FiMaximize, FiGrid, FiPlusCircle, FiType, 
-  FiMap, FiZoomIn, FiZoomOut, FiTrash2, FiLayers
+  FiMap, FiZoomIn, FiZoomOut, FiTrash2, FiLayers, FiEdit3, FiArrowLeft
 } from "react-icons/fi"
 
 export default function EditorSettings({ filters, setFilters, selectedClass, setSelectedClass, hidden, activeTool, setActiveTool, width }) {
@@ -20,42 +20,50 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
     setFilters(prev => ({ ...prev, [cls]: !prev[cls] }))
   }
 
+  const renderDrawing = () => (
+    <div className="animate-in fade-in duration-300">
+      
+      <div className="space-y-2 text-sm text-zinc-300">
+        {classes.map(cls => (
+          <label key={cls} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors p-2 rounded hover:bg-zinc-900/50">
+            <input
+              type="radio"
+              name="drawingClass"
+              checked={selectedClass === cls}
+              onChange={() => setSelectedClass(cls)}
+              className="w-4 h-4 bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
+            />
+            {isNarrow ? (
+              <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
+            ) : (
+              <span>{cls.replace("_", " / ")}</span>
+            )}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+
   const renderSettings = () => (
     <div className="animate-in fade-in duration-300">
-      <h4 className="text-sm font-semibold mb-3 text-zinc-200">Selected Class for Drawing</h4>
-      <div className="mb-4 p-2 bg-blue-600/10 border border-blue-500/50 rounded-lg">
-        <p className="text-xs text-blue-400 font-medium">{selectedClass}</p>
-      </div>
+      <h4 className="text-sm font-semibold mb-3 text-zinc-200">Class Visibility Filters</h4>
+      <p className="text-xs text-zinc-400 mb-4">Toggle which classes are visible on the canvas</p>
       
-      <h4 className="text-sm font-semibold mb-3 text-zinc-200">Available Classes</h4>
       <div className="space-y-3 text-sm text-zinc-300">
         {classes.map(cls => (
-          <div key={cls} className="flex items-center gap-2">
-            <label className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors flex-1">
-              <input
-                type="checkbox"
-                checked={filters[cls]}
-                onChange={() => toggle(cls)}
-                className="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
-              />
-              {isNarrow ? (
-                <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
-              ) : (
-                <span>{cls.replace("_", " / ")}</span>
-              )}
-            </label>
-            <button
-              onClick={() => setSelectedClass(cls)}
-              className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${
-                selectedClass === cls
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
-              }`}
-              title="Use for drawing"
-            >
-              {selectedClass === cls ? "✓" : "Use"}
-            </button>
-          </div>
+          <label key={cls} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={filters[cls]}
+              onChange={() => toggle(cls)}
+              className="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
+            />
+            {isNarrow ? (
+              <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
+            ) : (
+              <span>{cls.replace("_", " / ")}</span>
+            )}
+          </label>
         ))}
       </div>
     </div>
@@ -142,7 +150,12 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
         return (
           <button
             key={tool.id}
-            onClick={() => setActiveTool(tool.id)}
+            onClick={() => {
+              setActiveTool(tool.id)
+              if (tool.id === "draw_box") {
+                setActiveTab("drawing")
+              }
+            }}
             className={`flex flex-col items-center justify-center p-2.5 rounded-lg border transition-all duration-200
               ${isActive 
                 ? "bg-blue-600/10 border-blue-500 text-blue-400" 
@@ -164,28 +177,28 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
       <div className="h-full flex flex-col overflow-y-auto bg-black text-white scrollbar-hide">
         <div className="border-b border-zinc-800">
           <button
-            onClick={() => setActiveTab(activeTab === "settings" ? "" : "settings")}
-            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "settings" ? "text-blue-500" : "text-zinc-400"}`}
+            onClick={() => setActiveTab(activeTab === "drawing" ? "" : "drawing")}
+            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "drawing" ? "text-blue-500" : "text-zinc-400"}`}
           >
-            <FiLayers size={16} /> <span>Class Filters</span>
+            <FiEdit3 size={16} /> <span>Drawing</span>
           </button>
-          {activeTab === "settings" && (
+          {activeTab === "drawing" && (
             <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
-              {renderSettings()}
+              {renderDrawing()}
             </div>
           )}
         </div>
 
         <div className="border-b border-zinc-800">
           <button
-            onClick={() => setActiveTab(activeTab === "properties" ? "" : "properties")}
-            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "properties" ? "text-blue-500" : "text-zinc-400"}`}
+            onClick={() => setActiveTab(activeTab === "settings" ? "" : "settings")}
+            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "settings" ? "text-blue-500" : "text-zinc-400"}`}
           >
-            <FiInfo size={16} /> <span>Properties</span>
+            <FiLayers size={16} /> <span>Filters</span>
           </button>
-          {activeTab === "properties" && (
+          {activeTab === "settings" && (
             <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
-              {renderProperties()}
+              {renderSettings()}
             </div>
           )}
         </div>
@@ -207,6 +220,33 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
     )
   }
 
+  // Show drawing class selection when draw_box tool is active
+  if (activeTool === "draw_box" && activeTab === "drawing") {
+    return (
+      <div className="h-full flex flex-col overflow-hidden bg-black text-white">
+        <div className="flex items-center border-b border-zinc-800 h-12">
+          <button
+            onClick={() => {
+              setActiveTab("tools")
+              setActiveTool("select")
+            }}
+            className="flex items-center justify-center w-12 h-12 text-zinc-400 hover:text-white transition-colors"
+          >
+            <FiArrowLeft size={18} />
+          </button>
+          <div className="flex-1 text-center text-sm font-medium text-white">
+            Annotations
+          </div>
+          <div className="w-16"></div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-hide">
+          {renderDrawing()}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-black text-white">
       <div className="flex items-center border-b border-zinc-800">
@@ -216,7 +256,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
             activeTab === "settings" ? "border-blue-500 text-white" : "border-transparent text-zinc-400 hover:text-zinc-200"
           }`}
         >
-          <FiLayers /> Class Filters
+          <FiLayers /> Classes
         </button>
         <button
           onClick={() => setActiveTab("properties")}
