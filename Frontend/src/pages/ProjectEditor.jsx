@@ -9,7 +9,7 @@ import pdfPreviewService from "../services/pdfPreviewService"
 import detectionSyncService from "../services/detectionSyncService"
 import {
   createProject,
-  getProjects,
+  getProject,
   uploadProjectPDF,
   getProjectPages,
   runDetectionOnPage,
@@ -123,14 +123,15 @@ export default function ProjectEditor() {
     }
 
     if (id !== "new") {
-      getProjects().then(list => {
-        const p = list.find(x => x.id === id)
+      getProject(id).then(p => {
         if (!p) {
           setIsInitialLoading(false)
           return
         }
         setProject(p)
         fetchPages(p.id)
+      }).catch(() => {
+        setIsInitialLoading(false)
       })
     }
   }, [id, navigate, userId])

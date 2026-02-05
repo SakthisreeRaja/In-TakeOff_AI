@@ -1,4 +1,5 @@
 import time
+import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,9 +15,12 @@ from app.api import (
     detections as detections_api,
     users as users_api,
     teams as teams_api,
+    model_status as model_status_api,
 )
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 print("✓ Database configured (Alembic managed)")
 
@@ -47,6 +51,7 @@ app.include_router(projects_api.router, prefix="/api")
 app.include_router(uploads.router, prefix="/api")
 app.include_router(pages_api.router, prefix="/api")
 app.include_router(detections_api.router, prefix="/api")
+app.include_router(model_status_api.router)
 
 # ----------------------------
 # LOGGING

@@ -1,11 +1,14 @@
 import os
 import io
 import uuid
+import logging
 from pathlib import Path
 import torch
 from fastapi import UploadFile, HTTPException
 from pdf2image import convert_from_bytes
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 _original_load = torch.load
 def safe_load(*args, **kwargs):
@@ -14,16 +17,23 @@ def safe_load(*args, **kwargs):
     return _original_load(*args, **kwargs)
 torch.load = safe_load
 
+default_model_path = Path(__file__).resolve().parents[2] / "best.pt"
+MODEL_PATH = os.getenv("MODEL_PATH", str(default_model_path))
+MODEL_LOAD_ERROR = None
+
 try:
     from ultralytics import YOLO
-    default_model_path = Path(__file__).resolve().parents[2] / "best.pt"
-    MODEL_PATH = os.getenv("MODEL_PATH", str(default_model_path))
     if os.path.exists(MODEL_PATH):
         ai_model = YOLO(MODEL_PATH)
+        logger.info("YOLO model loaded from %s", MODEL_PATH)
     else:
         ai_model = None
-except Exception:
+        MODEL_LOAD_ERROR = f"Model file not found at {MODEL_PATH}"
+        logger.error(MODEL_LOAD_ERROR)
+except Exception as e:
     ai_model = None
+    MODEL_LOAD_ERROR = f"{type(e).__name__}: {e}"
+    logger.exception("Failed to load YOLO model from %s", MODEL_PATH)
 
 from app.services.base import BaseService
 from app.services.cloudinary_service import CloudinaryService
@@ -204,103 +214,58 @@ class PDFService(BaseService):
         }
 
     def generate_detections(self, page_id: str, project_id: str, image: Image.Image):
-        if ai_model:
-            try:
-                results = ai_model(image)
-                bounding_boxes = []
+        if not ai_model:
+            message = "AI model not loaded. Cannot run detections."
+            logger.error(message)
+            raise HTTPException(status_code=503, detail=message)
 
-                for result in results:
-                    boxes = result.boxes.cpu().numpy()
-                    for box in boxes:
-                        x1, y1, x2, y2 = box.xyxy[0]
-                        conf = float(box.conf[0])
-                        cls = int(box.cls[0])
-                        label = result.names[cls]
+        try:
+            results = ai_model(image)
+            bounding_boxes = []
 
-                        bb_id = str(uuid.uuid4())
-                        record = Detection(
-                            id=bb_id,
-                            page_id=page_id,
-                            project_id=project_id,
-                            class_name=label,
-                            confidence=conf,
-                            bbox_x1=float(x1),
-                            bbox_y1=float(y1),
-                            bbox_x2=float(x2),
-                            bbox_y2=float(y2),
-                            is_manual=False,
-                        )
-                        self.db.add(record)
+            for result in results:
+                boxes = result.boxes.cpu().numpy()
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    conf = float(box.conf[0])
+                    cls = int(box.cls[0])
+                    label = result.names[cls]
 
-                        bounding_boxes.append({
-                            "id": bb_id,
-                            "x1": float(x1),
-                            "y1": float(y1),
-                            "x2": float(x2),
-                            "y2": float(y2),
-                            "label": label,
-                            "confidence": conf,
-                            "is_manual": False,
-                        })
+                    bb_id = str(uuid.uuid4())
+                    record = Detection(
+                        id=bb_id,
+                        page_id=page_id,
+                        project_id=project_id,
+                        class_name=label,
+                        confidence=conf,
+                        bbox_x1=float(x1),
+                        bbox_y1=float(y1),
+                        bbox_x2=float(x2),
+                        bbox_y2=float(y2),
+                        is_manual=False,
+                    )
+                    self.db.add(record)
 
-                return bounding_boxes
+                    bounding_boxes.append({
+                        "id": bb_id,
+                        "x1": float(x1),
+                        "y1": float(y1),
+                        "x2": float(x2),
+                        "y2": float(y2),
+                        "label": label,
+                        "confidence": conf,
+                        "is_manual": False,
+                    })
 
-            except Exception:
-                return self.generate_mock_detections(
-                    page_id, project_id, image.width, image.height
-                )
+            return bounding_boxes
 
-        return self.generate_mock_detections(
-            page_id, project_id, image.width, image.height
-        )
-
-    def generate_mock_detections(
-        self, page_id: str, project_id: str, image_width: int, image_height: int
-    ):
-        mock_detections = [
-            {"x1": 100, "y1": 150, "x2": 180, "y2": 210, "label": "Duct", "confidence": 0.85},
-            {"x1": 250, "y1": 200, "x2": 370, "y2": 280, "label": "AC Unit", "confidence": 0.92},
-            {"x1": 400, "y1": 100, "x2": 460, "y2": 160, "label": "Vent", "confidence": 0.78},
-            {"x1": 150, "y1": 300, "x2": 220, "y2": 350, "label": "Damper", "confidence": 0.73},
-        ]
-
-        bounding_boxes = []
-
-        for d in mock_detections:
-            x1 = max(0, min(d["x1"], image_width))
-            y1 = max(0, min(d["y1"], image_height))
-            x2 = max(x1, min(d["x2"], image_width))
-            y2 = max(y1, min(d["y2"], image_height))
-
-            bb_id = str(uuid.uuid4())
-            record = Detection(
-                id=bb_id,
-                page_id=page_id,
-                project_id=project_id,
-                class_name=d["label"],
-                confidence=d["confidence"],
-                bbox_x1=x1,
-                bbox_y1=y1,
-                bbox_x2=x2,
-                bbox_y2=y2,
-                is_manual=False,
+        except Exception as e:
+            logger.exception(
+                "YOLO inference failed for page_id=%s project_id=%s",
+                page_id,
+                project_id,
             )
-            self.db.add(record)
-
-            bounding_boxes.append({
-                "id": bb_id,
-                "x1": x1,
-                "y1": y1,
-                "x2": x2,
-                "y2": y2,
-                "width": x2 - x1,
-                "height": y2 - y1,
-                "label": d["label"],
-                "confidence": d["confidence"],
-                "is_manual": False,
-            })
-
-        return bounding_boxes
+            raise HTTPException(status_code=500, detail=f"AI detection failed: {type(e).__name__}")
 
     def get_project_pages(self, project_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()
@@ -351,3 +316,11 @@ class PDFService(BaseService):
             "pages": page_data,
             "pageCount": len(page_data),
         }
+
+def get_model_status():
+    return {
+        "model_loaded": ai_model is not None,
+        "model_path": MODEL_PATH,
+        "model_exists": os.path.exists(MODEL_PATH),
+        "error": MODEL_LOAD_ERROR,
+    }

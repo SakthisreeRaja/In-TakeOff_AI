@@ -56,6 +56,11 @@ export async function getProjects() {
   return handleResponse(res)
 }
 
+export async function getProject(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}`)
+  return handleResponse(res)
+}
+
 export async function createProject(payload) {
   const res = await fetch(`${API_BASE}/projects/`, {
     method: "POST",

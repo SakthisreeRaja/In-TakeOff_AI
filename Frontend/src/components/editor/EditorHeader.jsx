@@ -1,4 +1,4 @@
-import { FiArrowLeft, FiPlay, FiDownload, FiChevronLeft, FiChevronRight, FiAlertCircle } from "react-icons/fi"
+import { FiArrowLeft, FiPlay, FiDownload, FiChevronLeft, FiChevronRight } from "react-icons/fi"
 import SyncStatusIndicator from "../common/SyncStatusIndicator"
 
 export default function EditorHeader({ 
@@ -14,8 +14,6 @@ export default function EditorHeader({
   onPrevPage,
   onNextPage
 }) {
-  const hasPendingChanges = !!syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
-
   return (
     <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
@@ -34,14 +32,6 @@ export default function EditorHeader({
 
         {/* Real-time Sync Status */}
         <SyncStatusIndicator uploadStatus={uploadStatus} />
-
-        {/* Warning when changes aren't synced yet */}
-        {hasPendingChanges && (
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 text-xs">
-            <FiAlertCircle size={12} />
-            Not synced yet
-          </div>
-        )}
       </div>
 
       <div className="flex items-center gap-3">

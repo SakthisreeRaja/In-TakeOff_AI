@@ -94,7 +94,45 @@ class DetectionSyncService {
    * Notify all listeners of status change
    */
   notifyListeners() {
-    this.listeners.forEach(callback => callback(this.syncStatus))
+    const snapshot = { ...this.syncStatus }
+    this.listeners.forEach(callback => callback(snapshot))
+  }
+
+  /**
+   * Recalculate pending count from IndexedDB
+   */
+  async recalculatePendingCount() {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORE_NAME], "readonly")
+      const store = transaction.objectStore(STORE_NAME)
+      const index = store.index("syncStatus")
+
+      const pendingRequest = index.count("pending")
+      const deleteRequest = index.count("pending_delete")
+
+      let pending = 0
+      let pendingDelete = 0
+
+      pendingRequest.onsuccess = () => {
+        pending = pendingRequest.result || 0
+        if (deleteRequest.readyState === "done") {
+          this.syncStatus.pendingCount = pending + pendingDelete
+          resolve(this.syncStatus.pendingCount)
+        }
+      }
+      deleteRequest.onsuccess = () => {
+        pendingDelete = deleteRequest.result || 0
+        if (pendingRequest.readyState === "done") {
+          this.syncStatus.pendingCount = pending + pendingDelete
+          resolve(this.syncStatus.pendingCount)
+        }
+      }
+
+      pendingRequest.onerror = () => reject(pendingRequest.error)
+      deleteRequest.onerror = () => reject(deleteRequest.error)
+    })
   }
 
   /**
@@ -275,12 +313,13 @@ class DetectionSyncService {
 
     // Schedule new sync after delay
     const timer = setTimeout(() => {
-      this.syncDetection(id)
       this.syncTimers.delete(id)
+      this.syncDetection(id)
     }, SYNC_DELAY)
 
     this.syncTimers.set(id, timer)
     this.updateSyncStatus()
+    this.notifyListeners()
   }
 
   /**
@@ -288,13 +327,25 @@ class DetectionSyncService {
    */
   async syncDetection(id) {
     const detection = await this.getDetectionById(id)
-    if (!detection) return
+    if (!detection) {
+      await this.recalculatePendingCount()
+      this.notifyListeners()
+      return
+    }
 
     // Skip syncing for preview-only pages; these will be migrated later
-    if (this.isPreviewPageId(detection.page_id)) return
+    if (this.isPreviewPageId(detection.page_id)) {
+      await this.recalculatePendingCount()
+      this.notifyListeners()
+      return
+    }
 
     // Already synced
-    if (detection.syncStatus === "synced") return
+    if (detection.syncStatus === "synced") {
+      await this.recalculatePendingCount()
+      this.notifyListeners()
+      return
+    }
 
     this.syncStatus.syncing = true
     this.notifyListeners()
@@ -353,7 +404,7 @@ class DetectionSyncService {
       }
     } finally {
       this.syncStatus.syncing = false
-      this.updateSyncStatus()
+      await this.recalculatePendingCount()
       this.notifyListeners()
     }
   }
@@ -383,6 +434,8 @@ class DetectionSyncService {
           
           // Sync all in parallel
           await Promise.all(allPending.map(d => this.syncDetection(d.id)))
+          await this.recalculatePendingCount()
+          this.notifyListeners()
           resolve()
         }
       }

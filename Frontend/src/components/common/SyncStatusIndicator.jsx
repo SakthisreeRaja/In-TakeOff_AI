@@ -68,18 +68,12 @@ export default function SyncStatusIndicator({ uploadStatus }) {
     }
   }
   // Then check detection sync status
-  else if (status.syncing) {
+  else if (status.syncing || status.pendingCount > 0) {
     iconType = "cloud"
     text = "Syncing..."
     color = "text-blue-500"
     bgColor = "bg-blue-500/10"
     showGlow = true
-  } else if (status.pendingCount > 0) {
-    iconType = "pending"
-    text = `${status.pendingCount} pending`
-    color = "text-yellow-500"
-    bgColor = "bg-yellow-500/10"
-    showGlow = false
   }
 
   const renderIcon = () => {
@@ -119,14 +113,6 @@ export default function SyncStatusIndicator({ uploadStatus }) {
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
           <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-      )
-    }
-    if (iconType === "pending") {
-      return (
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-          <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
       )
     }

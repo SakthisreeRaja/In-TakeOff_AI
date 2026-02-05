@@ -1,12 +1,11 @@
 from app.services.base import BaseService
 from app.models.projects import Project
+from app.models.pages import Page
 from app.models.users import User
 from app.models.members import Team
 from sqlalchemy import desc
 from datetime import datetime
 from fastapi import HTTPException
-import os
-import glob
 
 class ProjectService(BaseService):
 
@@ -70,41 +69,25 @@ class ProjectService(BaseService):
         return self.update_project(project_id, {"pdf_url": pdf_url})
 
     def get_pages(self, project_id: str):
-        """Get list of page files for a project"""
-        # Check if project exists
+        """Get list of pages for a project from the database"""
         project = self.get_project(project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        
-        # Define the uploads directory path for this project
-        upload_path = os.path.join("uploads", project_id)
-        
-        # Check if the directory exists
-        if not os.path.exists(upload_path):
-            return []
-        
-        # Find all page files (PNG images) in the project directory
-        page_pattern = os.path.join(upload_path, "page_*.png")
-        page_files = glob.glob(page_pattern)
-        
-        # Extract page numbers and create a list of page information
-        pages = []
-        for file_path in page_files:
-            filename = os.path.basename(file_path)
-            # Extract page number from filename (e.g., "page_1.png" -> 1)
-            if filename.startswith("page_") and filename.endswith(".png"):
-                try:
-                    page_num = int(filename[5:-4])  # Remove "page_" and ".png"
-                    pages.append({
-                        "page_number": page_num,
-                        "filename": filename,
-                        "url": f"/{file_path.replace(os.sep, '/')}"  # Convert to web URL format
-                    })
-                except ValueError:
-                    # Skip files that don't have valid page numbers
-                    continue
-        
-        # Sort pages by page number
-        pages.sort(key=lambda x: x["page_number"])
-        
-        return pages
+
+        pages = (
+            self.db.query(Page)
+            .filter(Page.project_id == project_id)
+            .order_by(Page.page_number)
+            .all()
+        )
+
+        return [
+            {
+                "page_id": p.id,
+                "page_number": p.page_number,
+                "image_url": p.image_url,
+                "width": p.width,
+                "height": p.height,
+            }
+            for p in pages
+        ]
