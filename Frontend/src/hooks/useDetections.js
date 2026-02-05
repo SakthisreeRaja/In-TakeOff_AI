@@ -38,8 +38,6 @@ export default function useDetections(pageId) {
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
-      // Cancel pending syncs when component unmounts (user leaves page)
-      detectionSyncService.cancelAllPendingSyncs()
     }
   }, [])
 

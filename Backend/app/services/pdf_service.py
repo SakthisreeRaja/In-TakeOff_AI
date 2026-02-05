@@ -1,6 +1,7 @@
 import os
 import io
 import uuid
+from pathlib import Path
 import torch
 from fastapi import UploadFile, HTTPException
 from pdf2image import convert_from_bytes
@@ -15,7 +16,8 @@ torch.load = safe_load
 
 try:
     from ultralytics import YOLO
-    MODEL_PATH = "best.pt"
+    default_model_path = Path(__file__).resolve().parents[2] / "best.pt"
+    MODEL_PATH = os.getenv("MODEL_PATH", str(default_model_path))
     if os.path.exists(MODEL_PATH):
         ai_model = YOLO(MODEL_PATH)
     else:

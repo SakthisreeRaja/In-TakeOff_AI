@@ -6,6 +6,7 @@ import EditorCanvas from "../components/editor/EditorCanvas"
 import EditorBOQ from "../components/editor/EditorBOQ"
 import useDetections from "../hooks/useDetections"
 import pdfPreviewService from "../services/pdfPreviewService"
+import detectionSyncService from "../services/detectionSyncService"
 import {
   createProject,
   getProjects,
@@ -94,9 +95,9 @@ export default function ProjectEditor() {
     return () => {
       // Stop polling when leaving
       stopPolling()
-      // Cancel any pending syncs if we're just navigating away
-      if (cancelSync) {
-        cancelSync()
+      // Attempt to flush any pending detection changes when leaving
+      if (syncNow) {
+        void syncNow()
       }
     }
   }, [])
@@ -296,6 +297,7 @@ export default function ProjectEditor() {
       
       // Step 4: Replace preview with real Cloudinary URLs
       if (result.pages) {
+        await detectionSyncService.migratePreviewDetections(previewPagesData, result.pages)
         setPages(result.pages)
         setPreviewPages([])
       }

@@ -21,6 +21,38 @@ class DetectionSyncService {
     this.syncTimers = new Map() // Debounce timers
     this.listeners = new Set() // For state change notifications
     this.syncStatus = { syncing: false, lastSync: null, pendingCount: 0 }
+    this.tempIdMap = new Map() // Map of temp_id -> real_id after create sync
+  }
+
+  isPreviewPageId(pageId) {
+    return typeof pageId === "string" && pageId.startsWith("preview_")
+  }
+
+  async getDetectionByClientTempId(tempId) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORE_NAME], "readonly")
+      const store = transaction.objectStore(STORE_NAME)
+      const request = store.openCursor()
+
+      request.onsuccess = () => {
+        const cursor = request.result
+        if (!cursor) {
+          resolve(null)
+          return
+        }
+
+        if (cursor.value?.client_temp_id === tempId) {
+          resolve(cursor.value)
+          return
+        }
+
+        cursor.continue()
+      }
+
+      request.onerror = () => reject(request.error)
+    })
   }
 
   /**
@@ -102,8 +134,10 @@ class DetectionSyncService {
     // Save to IndexedDB immediately
     await this.saveToLocal(localDetection)
 
-    // Schedule background sync
-    this.scheduleSyncDetection(id)
+    // Schedule background sync (skip preview pages until real IDs exist)
+    if (!this.isPreviewPageId(localDetection.page_id)) {
+      this.scheduleSyncDetection(id)
+    }
 
     return localDetection
   }
@@ -114,18 +148,34 @@ class DetectionSyncService {
   async updateDetection(id, updates) {
     if (!this.db) await this.init()
 
-    const existing = await this.getDetectionById(id)
+    let actualId = id
+    let existing = await this.getDetectionById(actualId)
+
+    if (!existing && this.tempIdMap.has(id)) {
+      actualId = this.tempIdMap.get(id)
+      existing = await this.getDetectionById(actualId)
+    }
+
+    if (!existing && id.startsWith("temp_")) {
+      const mapped = await this.getDetectionByClientTempId(id)
+      if (mapped) {
+        actualId = mapped.id
+        existing = mapped
+      }
+    }
+
     if (!existing) throw new Error("Detection not found")
 
     const updated = {
       ...existing,
       ...updates,
+      id: actualId,
       updatedAt: Date.now(),
       syncStatus: "pending",
     }
 
     await this.saveToLocal(updated)
-    this.scheduleSyncDetection(id)
+    this.scheduleSyncDetection(actualId)
 
     return updated
   }
@@ -136,18 +186,34 @@ class DetectionSyncService {
   async deleteDetection(id) {
     if (!this.db) await this.init()
 
-    const detection = await this.getDetectionById(id)
+    let actualId = id
+    let detection = await this.getDetectionById(actualId)
+
+    if (!detection && this.tempIdMap.has(id)) {
+      actualId = this.tempIdMap.get(id)
+      detection = await this.getDetectionById(actualId)
+    }
+
+    if (!detection && id.startsWith("temp_")) {
+      const mapped = await this.getDetectionByClientTempId(id)
+      if (mapped) {
+        actualId = mapped.id
+        detection = mapped
+      }
+    }
+
     if (!detection) return
 
     // Mark as deleted (don't remove yet, in case sync fails)
     const deleted = {
       ...detection,
+      id: actualId,
       syncStatus: "pending_delete",
       updatedAt: Date.now(),
     }
 
     await this.saveToLocal(deleted)
-    this.scheduleSyncDetection(id)
+    this.scheduleSyncDetection(actualId)
   }
 
   /**
@@ -224,6 +290,9 @@ class DetectionSyncService {
     const detection = await this.getDetectionById(id)
     if (!detection) return
 
+    // Skip syncing for preview-only pages; these will be migrated later
+    if (this.isPreviewPageId(detection.page_id)) return
+
     // Already synced
     if (detection.syncStatus === "synced") return
 
@@ -241,10 +310,13 @@ class DetectionSyncService {
         // Create new detection
         const serverDetection = await this.syncCreateToBackend(detection)
         
+        this.tempIdMap.set(id, serverDetection.id)
+
         // Remove temp and add real one
         await this.removeFromLocal(id)
         await this.saveToLocal({
           ...serverDetection,
+          client_temp_id: id,
           syncStatus: "synced",
           updatedAt: Date.now(),
         })
@@ -324,7 +396,7 @@ class DetectionSyncService {
     const { createDetection } = await import("./api.js")
     
     // Remove local-only fields
-    const { id, syncStatus, createdAt, updatedAt, retryCount, ...cleanData } = detection
+    const { id, syncStatus, createdAt, updatedAt, retryCount, client_temp_id, ...cleanData } = detection
     
     return await createDetection(detection.page_id, cleanData)
   }
@@ -333,7 +405,7 @@ class DetectionSyncService {
     const { updateDetection } = await import("./api.js")
     
     // Remove local-only fields
-    const { syncStatus, createdAt, updatedAt, retryCount, ...cleanData } = detection
+    const { syncStatus, createdAt, updatedAt, retryCount, client_temp_id, ...cleanData } = detection
     
     return await updateDetection(id, cleanData)
   }
@@ -362,6 +434,23 @@ class DetectionSyncService {
 
     // Get local detections
     const localDetections = await this.getDetections(pageId)
+
+    // Ensure pending local changes keep syncing (e.g., after refresh/reopen)
+    for (const local of localDetections) {
+      if (local.syncStatus && local.syncStatus !== "synced") {
+        if (local.syncStatus === "error") {
+          await this.saveToLocal({
+            ...local,
+            syncStatus: "pending",
+            retryCount: 0,
+            updatedAt: Date.now(),
+          })
+        }
+        if (!this.isPreviewPageId(local.page_id)) {
+          this.scheduleSyncDetection(local.id)
+        }
+      }
+    }
 
     // Create a map for quick lookup
     const localMap = new Map(localDetections.map(d => [d.id, d]))
@@ -487,6 +576,50 @@ class DetectionSyncService {
         request.onerror = () => reject(request.error)
       })
     }
+  }
+
+  /**
+   * Migrate preview detections to real page IDs after upload completes
+   */
+  async migratePreviewDetections(previewPages, realPages) {
+    if (!this.db) await this.init()
+
+    if (!Array.isArray(previewPages) || !Array.isArray(realPages)) {
+      return { migrated: 0 }
+    }
+
+    const realByPageNumber = new Map(
+      realPages.map(p => [p.page_number, p.page_id])
+    )
+
+    let migrated = 0
+
+    for (const preview of previewPages) {
+      const realPageId = realByPageNumber.get(preview.page_number)
+      if (!realPageId) continue
+
+      const localDetections = await this.getDetections(preview.page_id)
+      for (const det of localDetections) {
+        if (det.syncStatus === "pending_delete") {
+          await this.removeFromLocal(det.id)
+          continue
+        }
+
+        const updated = {
+          ...det,
+          page_id: realPageId,
+          syncStatus: "pending",
+          retryCount: 0,
+          updatedAt: Date.now(),
+        }
+
+        await this.saveToLocal(updated)
+        this.scheduleSyncDetection(updated.id)
+        migrated += 1
+      }
+    }
+
+    return { migrated }
   }
 }
 
