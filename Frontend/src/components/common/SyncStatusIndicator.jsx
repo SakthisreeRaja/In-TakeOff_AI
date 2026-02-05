@@ -13,7 +13,7 @@ import detectionSyncService from "../../services/detectionSyncService"
  * - ✓ Synced (all changes saved)
  * - ! Error (sync failed)
  */
-export default function SyncStatusIndicator({ uploadStatus }) {
+export default function SyncStatusIndicator({ uploadStatus, isRunningDetection }) {
   const [status, setStatus] = useState({ 
     syncing: false, 
     lastSync: null, 
@@ -66,6 +66,14 @@ export default function SyncStatusIndicator({ uploadStatus }) {
       bgColor = "bg-red-500/10"
       showGlow = false
     }
+  }
+  // Then show AI detection running
+  else if (isRunningDetection) {
+    iconType = "cloud"
+    text = "Syncing..."
+    color = "text-blue-500"
+    bgColor = "bg-blue-500/10"
+    showGlow = true
   }
   // Then check detection sync status
   else if (status.syncing || status.pendingCount > 0) {

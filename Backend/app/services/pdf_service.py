@@ -242,6 +242,8 @@ class PDFService(BaseService):
 
         try:
             results = ai_model(image)
+            if isinstance(results, list) and len(results) > 1:
+                results = results[:1]
             bounding_boxes = []
 
             for result in results:

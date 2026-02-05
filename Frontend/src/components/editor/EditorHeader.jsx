@@ -31,7 +31,7 @@ export default function EditorHeader({
         </h2>
 
         {/* Real-time Sync Status */}
-        <SyncStatusIndicator uploadStatus={uploadStatus} />
+        <SyncStatusIndicator uploadStatus={uploadStatus} isRunningDetection={isRunningDetection} />
       </div>
 
       <div className="flex items-center gap-3">
