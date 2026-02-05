@@ -19,13 +19,34 @@ torch.load = safe_load
 
 default_model_path = Path(__file__).resolve().parents[2] / "best.pt"
 MODEL_PATH = os.getenv("MODEL_PATH", str(default_model_path))
+MODEL_TASK = os.getenv("MODEL_TASK")
 MODEL_LOAD_ERROR = None
 
 try:
     from ultralytics import YOLO
+    from ultralytics.nn.modules.head import Detect, OBB, Pose, Segment
+
+    def _patch_yolo_heads(model):
+        """Patch older OBB/Segment/Pose heads missing the `detect` attribute."""
+        torch_model = getattr(model, "model", None)
+        if torch_model is None:
+            return False
+        patched = False
+        for module in torch_model.modules():
+            if isinstance(module, (OBB, Segment, Pose)) and not hasattr(module, "detect"):
+                module.detect = Detect.forward
+                patched = True
+        return patched
+
     if os.path.exists(MODEL_PATH):
-        ai_model = YOLO(MODEL_PATH)
-        logger.info("YOLO model loaded from %s", MODEL_PATH)
+        ai_model = YOLO(MODEL_PATH, task=MODEL_TASK) if MODEL_TASK else YOLO(MODEL_PATH)
+        if _patch_yolo_heads(ai_model):
+            logger.info("Patched YOLO head modules missing 'detect' attribute.")
+        logger.info(
+            "YOLO model loaded from %s (task=%s)",
+            MODEL_PATH,
+            MODEL_TASK or "auto",
+        )
     else:
         ai_model = None
         MODEL_LOAD_ERROR = f"Model file not found at {MODEL_PATH}"
@@ -224,38 +245,75 @@ class PDFService(BaseService):
             bounding_boxes = []
 
             for result in results:
-                boxes = result.boxes.cpu().numpy()
-                for box in boxes:
-                    x1, y1, x2, y2 = box.xyxy[0]
-                    conf = float(box.conf[0])
-                    cls = int(box.cls[0])
-                    label = result.names[cls]
+                if result.boxes is not None:
+                    boxes = result.boxes.cpu().numpy()
+                    for box in boxes:
+                        x1, y1, x2, y2 = box.xyxy[0]
+                        conf = float(box.conf[0])
+                        cls = int(box.cls[0])
+                        label = result.names[cls]
 
-                    bb_id = str(uuid.uuid4())
-                    record = Detection(
-                        id=bb_id,
-                        page_id=page_id,
-                        project_id=project_id,
-                        class_name=label,
-                        confidence=conf,
-                        bbox_x1=float(x1),
-                        bbox_y1=float(y1),
-                        bbox_x2=float(x2),
-                        bbox_y2=float(y2),
-                        is_manual=False,
-                    )
-                    self.db.add(record)
+                        bb_id = str(uuid.uuid4())
+                        record = Detection(
+                            id=bb_id,
+                            page_id=page_id,
+                            project_id=project_id,
+                            class_name=label,
+                            confidence=conf,
+                            bbox_x1=float(x1),
+                            bbox_y1=float(y1),
+                            bbox_x2=float(x2),
+                            bbox_y2=float(y2),
+                            is_manual=False,
+                        )
+                        self.db.add(record)
 
-                    bounding_boxes.append({
-                        "id": bb_id,
-                        "x1": float(x1),
-                        "y1": float(y1),
-                        "x2": float(x2),
-                        "y2": float(y2),
-                        "label": label,
-                        "confidence": conf,
-                        "is_manual": False,
-                    })
+                        bounding_boxes.append({
+                            "id": bb_id,
+                            "x1": float(x1),
+                            "y1": float(y1),
+                            "x2": float(x2),
+                            "y2": float(y2),
+                            "label": label,
+                            "confidence": conf,
+                            "is_manual": False,
+                        })
+                elif result.obb is not None:
+                    obb = result.obb.cpu()
+                    xyxys = obb.xyxy
+                    confs = obb.conf
+                    clss = obb.cls
+                    for i in range(len(obb)):
+                        x1, y1, x2, y2 = xyxys[i]
+                        conf = float(confs[i])
+                        cls = int(clss[i])
+                        label = result.names[cls]
+
+                        bb_id = str(uuid.uuid4())
+                        record = Detection(
+                            id=bb_id,
+                            page_id=page_id,
+                            project_id=project_id,
+                            class_name=label,
+                            confidence=conf,
+                            bbox_x1=float(x1),
+                            bbox_y1=float(y1),
+                            bbox_x2=float(x2),
+                            bbox_y2=float(y2),
+                            is_manual=False,
+                        )
+                        self.db.add(record)
+
+                        bounding_boxes.append({
+                            "id": bb_id,
+                            "x1": float(x1),
+                            "y1": float(y1),
+                            "x2": float(x2),
+                            "y2": float(y2),
+                            "label": label,
+                            "confidence": conf,
+                            "is_manual": False,
+                        })
 
             return bounding_boxes
 
@@ -322,5 +380,6 @@ def get_model_status():
         "model_loaded": ai_model is not None,
         "model_path": MODEL_PATH,
         "model_exists": os.path.exists(MODEL_PATH),
+        "model_task": MODEL_TASK or "auto",
         "error": MODEL_LOAD_ERROR,
     }
