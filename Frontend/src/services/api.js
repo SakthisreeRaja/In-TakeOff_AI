@@ -70,6 +70,13 @@ export async function createProject(payload) {
   return handleResponse(res)
 }
 
+export async function deleteProject(projectId) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+    method: "DELETE",
+  })
+  if (!res.ok) throw new Error("Failed to delete project")
+}
+
 /* =========================
    PROJECT PAGES & UPLOADS
    ========================= */

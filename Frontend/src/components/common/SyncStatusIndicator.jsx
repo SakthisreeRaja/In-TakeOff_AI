@@ -49,7 +49,7 @@ export default function SyncStatusIndicator({ uploadStatus, isRunningDetection }
       showGlow = false
     } else if (uploadStatus.stage === 'uploading') {
       iconType = "cloud"
-      text = "Syncing to Cloud..."
+      text = "Syncing..."
       color = "text-blue-500"
       bgColor = "bg-blue-500/10"
       showGlow = true

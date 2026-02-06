@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { FiFolder } from "react-icons/fi"
 import ProjectsHeader from "../components/projects/ProjectsHeader"
 import ProjectsGrid from "../components/projects/ProjectsGrid"
-import { getProjects } from "../services/api"
+import { getProjects, deleteProject } from "../services/api"
 import { formatDate } from "../utils/helpers"
 
 export default function Projects() {
@@ -31,6 +31,21 @@ export default function Projects() {
       p.name.toLowerCase().includes(search.toLowerCase()) &&
       (status === "all" || p.status === status)
   )
+
+  const handleDelete = async (project) => {
+    const confirmed = window.confirm(
+      `Delete "${project.name}"? This action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    try {
+      await deleteProject(project.id)
+      setProjects(prev => prev.filter(p => p.id !== project.id))
+    } catch (err) {
+      console.error("Error deleting project:", err)
+      alert("Failed to delete project. Please try again.")
+    }
+  }
 
   return (
     <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full">
@@ -74,6 +89,7 @@ export default function Projects() {
           <ProjectsGrid
             projects={filtered}
             onOpen={p => navigate(`/projects/${p.id}`)}
+            onDelete={handleDelete}
           />
         </div>
       )}

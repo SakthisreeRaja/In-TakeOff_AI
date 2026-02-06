@@ -2,7 +2,7 @@ import { FiFileText, FiMoreVertical, FiEdit, FiTrash2, FiCopy } from "react-icon
 import { useState } from "react"
 import StatusBadge from "./StatusBadge"
 
-export default function ProjectCard({ project, onOpen }) {
+export default function ProjectCard({ project, onOpen, onDelete }) {
   const [showMenu, setShowMenu] = useState(false)
 
   return (
@@ -23,15 +23,28 @@ export default function ProjectCard({ project, onOpen }) {
 
         {showMenu && (
           <div className="absolute top-8 right-0 bg-zinc-800 rounded-lg shadow-lg border border-zinc-700 overflow-hidden z-10 w-40">
-            <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white">
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white"
+            >
               <FiEdit size={14} />
               <span>Rename</span>
             </button>
-            <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white">
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white"
+            >
               <FiCopy size={14} />
               <span>Duplicate</span>
             </button>
-            <button className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowMenu(false)
+                onDelete && onDelete(project)
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
               <FiTrash2 size={14} />
               <span>Delete</span>
             </button>
