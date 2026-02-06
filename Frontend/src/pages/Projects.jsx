@@ -8,6 +8,26 @@ import { formatDate } from "../utils/helpers"
 import detectionSyncService from "../services/detectionSyncService"
 import { getProjectUploadStatuses, subscribeUploadStatus } from "../services/uploadStatusStore"
 
+const PROJECTS_CACHE_KEY = "projects_cache_v1"
+
+function loadProjectsCache() {
+  try {
+    const raw = localStorage.getItem(PROJECTS_CACHE_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function saveProjectsCache(list) {
+  try {
+    localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(list))
+  } catch {
+    // ignore cache write errors
+  }
+}
+
 export default function Projects() {
   const navigate = useNavigate()
   const [projects, setProjects] = useState([])
@@ -18,6 +38,12 @@ export default function Projects() {
   const [uploadStatusMap, setUploadStatusMap] = useState(getProjectUploadStatuses())
 
   useEffect(() => {
+    const cached = loadProjectsCache()
+    if (cached && cached.length > 0) {
+      setProjects(cached)
+      setLoading(false)
+    }
+
     getProjects()
       .then(data => {
         const formatted = data.map(p => ({
@@ -25,6 +51,7 @@ export default function Projects() {
           createdAt: formatDate(p.created_at)
         }))
         setProjects(formatted)
+        saveProjectsCache(formatted)
       })
       .catch(err => console.error("Error loading projects:", err))
       .finally(() => setLoading(false))

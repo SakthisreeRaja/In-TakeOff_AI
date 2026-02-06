@@ -7,7 +7,7 @@ import EditorBOQ from "../components/editor/EditorBOQ"
 import useDetections from "../hooks/useDetections"
 import pdfPreviewService from "../services/pdfPreviewService"
 import detectionSyncService from "../services/detectionSyncService"
-import { setProjectUploadStatus, clearProjectUploadStatus } from "../services/uploadStatusStore"
+import { setProjectUploadStatus, clearProjectUploadStatus, getProjectUploadStatuses } from "../services/uploadStatusStore"
 import {
   createProject,
   getProject,
@@ -162,7 +162,13 @@ export default function ProjectEditor() {
       const res = await getProjectPages(projectId)
       setPages(res.pages || [])
 
-      if ((!res.pages || res.pages.length === 0) && isProcessing) {
+      const uploadMap = getProjectUploadStatuses()
+      const isUploadInProgress = Boolean(uploadMap[projectId]?.isUploading)
+
+      if ((!res.pages || res.pages.length === 0) && (isProcessing || isUploadInProgress)) {
+        if (!isProcessing && isUploadInProgress) {
+          setIsProcessing(true)
+        }
         startPolling(projectId)
       } else if (res.pages && res.pages.length > 0) {
         setIsProcessing(false)
@@ -276,6 +282,7 @@ export default function ProjectEditor() {
       progress: 0,
       error: null
     })
+    setProjectUploadStatus(project.id, { isUploading: true, stage: "converting" })
     
     try {
       // Step 1: Convert PDF to images CLIENT-SIDE (instant preview!)
@@ -306,6 +313,7 @@ export default function ProjectEditor() {
         progress: 50,
         error: null
       })
+      setProjectUploadStatus(project.id, { isUploading: true, stage: "uploading" })
       
       // Step 3: Upload to backend/Cloudinary in BACKGROUND
       console.log('Uploading to Cloudinary in background...')
@@ -357,6 +365,7 @@ export default function ProjectEditor() {
           progress: 25,
           error: null
         })
+        setProjectUploadStatus(project.id, { isUploading: true, stage: "uploading" })
         await uploadProjectPDF(project.id, file)
         startPolling(project.id)
         await fetchPages(project.id)

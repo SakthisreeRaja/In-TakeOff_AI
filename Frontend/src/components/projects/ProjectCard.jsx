@@ -11,7 +11,7 @@ export default function ProjectCard({ project, onOpen, onDelete }) {
   const pendingCount = Number(project?.syncPendingCount || 0)
   const showSync = Boolean(project?.isUploading) || pendingCount > 0
   const syncLabel = project?.isUploading
-    ? "Uploading"
+    ? "Syncing..."
     : pendingCount > 0
       ? `Syncing (${pendingCount})`
       : ""
