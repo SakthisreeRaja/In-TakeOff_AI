@@ -4,6 +4,17 @@ import StatusBadge from "./StatusBadge"
 
 export default function ProjectCard({ project, onOpen, onDelete }) {
   const [showMenu, setShowMenu] = useState(false)
+  const rawCount = project?.count ?? project?.page_count ?? 0
+  const pageCount = Number(rawCount)
+  const showPageCount = Number.isFinite(pageCount) && pageCount > 0
+  const showCreatedAt = Boolean(project?.createdAt)
+  const pendingCount = Number(project?.syncPendingCount || 0)
+  const showSync = Boolean(project?.isUploading) || pendingCount > 0
+  const syncLabel = project?.isUploading
+    ? "Uploading"
+    : pendingCount > 0
+      ? `Syncing (${pendingCount})`
+      : ""
 
   return (
     <div 
@@ -58,14 +69,21 @@ export default function ProjectCard({ project, onOpen, onDelete }) {
       
       <h3 className="text-white font-medium truncate">{project.name}</h3>
       
-      <div className="text-xs text-zinc-400 mt-1 flex gap-2">
-        <span>{project.createdAt}</span>
-        <span>•</span>
-        <span>{project.count} page{project.count !== 1 ? 's' : ''}</span>
-      </div>
+      {(showCreatedAt || showPageCount) && (
+        <div className="text-xs text-zinc-400 mt-1 flex gap-2">
+          {showCreatedAt && <span>{project.createdAt}</span>}
+          {showCreatedAt && showPageCount && <span>•</span>}
+          {showPageCount && <span>{pageCount} page{pageCount !== 1 ? "s" : ""}</span>}
+        </div>
+      )}
       
-      <div className="mt-3">
+      <div className="mt-3 flex items-center gap-2">
         <StatusBadge status={project.status} />
+        {showSync && (
+          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 border border-zinc-800">
+            {syncLabel}
+          </span>
+        )}
       </div>
     </div>
   )

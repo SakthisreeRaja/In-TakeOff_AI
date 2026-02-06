@@ -5,6 +5,8 @@ import ProjectsHeader from "../components/projects/ProjectsHeader"
 import ProjectsGrid from "../components/projects/ProjectsGrid"
 import { getProjects, deleteProject } from "../services/api"
 import { formatDate } from "../utils/helpers"
+import detectionSyncService from "../services/detectionSyncService"
+import { getProjectUploadStatuses, subscribeUploadStatus } from "../services/uploadStatusStore"
 
 export default function Projects() {
   const navigate = useNavigate()
@@ -12,6 +14,8 @@ export default function Projects() {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
   const [loading, setLoading] = useState(true)
+  const [projectSyncMap, setProjectSyncMap] = useState({})
+  const [uploadStatusMap, setUploadStatusMap] = useState(getProjectUploadStatuses())
 
   useEffect(() => {
     getProjects()
@@ -26,11 +30,49 @@ export default function Projects() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    let active = true
+
+    const updateSyncMap = async () => {
+      const ids = projects.map(p => p.id)
+      if (ids.length === 0) {
+        setProjectSyncMap({})
+        return
+      }
+      const counts = await detectionSyncService.getPendingCountsByProject(ids)
+      if (active) {
+        setProjectSyncMap(counts)
+      }
+    }
+
+    updateSyncMap()
+    const unsubscribe = detectionSyncService.subscribe(() => {
+      updateSyncMap()
+    })
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [projects])
+
+  useEffect(() => {
+    setUploadStatusMap(getProjectUploadStatuses())
+    const unsubscribe = subscribeUploadStatus(setUploadStatusMap)
+    return () => unsubscribe()
+  }, [])
+
   const filtered = projects.filter(
     p =>
       p.name.toLowerCase().includes(search.toLowerCase()) &&
       (status === "all" || p.status === status)
   )
+
+  const filteredWithSync = filtered.map(p => ({
+    ...p,
+    syncPendingCount: projectSyncMap[p.id] || 0,
+    isUploading: Boolean(uploadStatusMap[p.id]?.isUploading)
+  }))
 
   const handleDelete = async (project) => {
     const confirmed = window.confirm(
@@ -87,7 +129,7 @@ export default function Projects() {
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide w-full">
           <ProjectsGrid
-            projects={filtered}
+            projects={filteredWithSync}
             onOpen={p => navigate(`/projects/${p.id}`)}
             onDelete={handleDelete}
           />

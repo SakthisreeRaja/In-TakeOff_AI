@@ -79,10 +79,10 @@ export default function EditorHeader({
             {isRunningDetection ? "Running..." : "Run Detection"}
           </button>
           {isSyncing && (
-            <div className="pointer-events-none absolute right-0 -top-11 z-20 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="pointer-events-none absolute right-0 top-full mt-2 z-20 opacity-0 transition-opacity group-hover:opacity-100">
               <div className="relative rounded-lg border border-zinc-700/80 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-100 shadow-lg backdrop-blur">
                 {runDetectionTip}
-                <span className="absolute -bottom-1.5 right-4 h-3 w-3 rotate-45 border-b border-r border-zinc-700/80 bg-zinc-900/95" />
+                <span className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 border-t border-l border-zinc-700/80 bg-zinc-900/95" />
               </div>
             </div>
           )}

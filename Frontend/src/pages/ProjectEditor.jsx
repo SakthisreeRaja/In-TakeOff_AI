@@ -7,6 +7,7 @@ import EditorBOQ from "../components/editor/EditorBOQ"
 import useDetections from "../hooks/useDetections"
 import pdfPreviewService from "../services/pdfPreviewService"
 import detectionSyncService from "../services/detectionSyncService"
+import { setProjectUploadStatus, clearProjectUploadStatus } from "../services/uploadStatusStore"
 import {
   createProject,
   getProject,
@@ -43,6 +44,23 @@ export default function ProjectEditor() {
   const uploadInitiatedRef = useRef(false) // Track if upload already started
 
   const userId = localStorage.getItem("user_id")
+
+  useEffect(() => {
+    if (!project?.id) return
+
+    const isUploadingNow =
+      isProcessing ||
+      uploadStatus?.isUploading ||
+      uploadStatus?.stage === "converting" ||
+      uploadStatus?.stage === "uploading"
+
+    if (isUploadingNow) {
+      const stage = uploadStatus?.stage || (isProcessing ? "uploading" : "converting")
+      setProjectUploadStatus(project.id, { isUploading: true, stage })
+    } else {
+      clearProjectUploadStatus(project.id)
+    }
+  }, [project?.id, isProcessing, uploadStatus?.isUploading, uploadStatus?.stage])
 
   const sortedPages = [...pages].sort(
     (a, b) => a.page_number - b.page_number
@@ -311,6 +329,8 @@ export default function ProjectEditor() {
         error: null
       })
       console.log('Upload complete! Synced to cloud.')
+
+      clearProjectUploadStatus(project.id)
       
       // Reset upload ref for next upload
       uploadInitiatedRef.current = false
@@ -355,6 +375,7 @@ export default function ProjectEditor() {
             error: null
           })
         }, 3000)
+        clearProjectUploadStatus(project.id)
       } catch (fallbackError) {
         console.error('Fallback also failed:', fallbackError)
         setUploadStatus({
@@ -366,6 +387,7 @@ export default function ProjectEditor() {
         alert(error.message || 'Failed to process PDF. Please try again.')
         setIsUploading(false)
         setIsProcessing(false)
+        clearProjectUploadStatus(project.id)
       }
       
       setPreviewPages([])

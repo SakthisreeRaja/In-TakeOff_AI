@@ -1,7 +1,14 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocation } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import Topbar from "./Topbar"
+import detectionSyncService from "../../services/detectionSyncService"
+import {
+  getProjectUploadStatuses,
+  subscribeUploadStatus,
+  hasAnyUploadInProgress,
+  clearAllProjectUploadStatus
+} from "../../services/uploadStatusStore"
 
 export default function Layout({ children }) {
   const location = useLocation()
@@ -11,6 +18,68 @@ export default function Layout({ children }) {
     location.pathname !== "/projects"
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [syncStatus, setSyncStatus] = useState(detectionSyncService.getSyncStatus())
+  const [uploadStatusMap, setUploadStatusMap] = useState(getProjectUploadStatuses())
+
+  useEffect(() => {
+    if (sessionStorage.getItem("discard_pending_sync") === "1") {
+      sessionStorage.removeItem("discard_pending_sync")
+      detectionSyncService.discardPendingChanges()
+      clearAllProjectUploadStatus()
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    detectionSyncService.recalculatePendingCount().then(() => {
+      if (active) {
+        setSyncStatus(detectionSyncService.getSyncStatus())
+      }
+    })
+
+    const unsubscribe = detectionSyncService.subscribe((status) => {
+      setSyncStatus(status)
+    })
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    setUploadStatusMap(getProjectUploadStatuses())
+    const unsubscribe = subscribeUploadStatus(setUploadStatusMap)
+    return () => unsubscribe()
+  }, [])
+
+  const hasSyncInProgress =
+    Boolean(syncStatus?.syncing) ||
+    (syncStatus?.pendingCount && syncStatus?.pendingCount > 0) ||
+    hasAnyUploadInProgress(uploadStatusMap)
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!hasSyncInProgress) return
+      e.preventDefault()
+      e.returnValue = ""
+    }
+
+    const handlePageHide = (e) => {
+      if (e?.persisted) return
+      if (!hasSyncInProgress) return
+      sessionStorage.setItem("discard_pending_sync", "1")
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    window.addEventListener("pagehide", handlePageHide)
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      window.removeEventListener("pagehide", handlePageHide)
+    }
+  }, [hasSyncInProgress])
 
   return (
     <div className="h-screen overflow-hidden bg-black flex">

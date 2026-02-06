@@ -564,6 +564,68 @@ class DetectionSyncService {
   }
 
   /**
+   * Get pending counts grouped by project_id
+   */
+  async getPendingCountsByProject(projectIds = null) {
+    if (!this.db) await this.init()
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORE_NAME], "readonly")
+      const store = transaction.objectStore(STORE_NAME)
+      const request = store.getAll()
+      const allowed = projectIds ? new Set(projectIds) : null
+      const counts = {}
+
+      request.onsuccess = () => {
+        const rows = request.result || []
+        for (const det of rows) {
+          if (!det || det.syncStatus === "synced") continue
+          if (allowed && !allowed.has(det.project_id)) continue
+          if (!det.project_id) continue
+          counts[det.project_id] = (counts[det.project_id] || 0) + 1
+        }
+        resolve(counts)
+      }
+
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  /**
+   * Discard any unsynced local changes (keep only synced data)
+   */
+  async discardPendingChanges() {
+    if (!this.db) await this.init()
+
+    await new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORE_NAME], "readwrite")
+      const store = transaction.objectStore(STORE_NAME)
+      const request = store.openCursor()
+
+      request.onsuccess = () => {
+        const cursor = request.result
+        if (!cursor) {
+          resolve()
+          return
+        }
+
+        const value = cursor.value
+        if (value?.syncStatus && value.syncStatus !== "synced") {
+          cursor.delete()
+        }
+
+        cursor.continue()
+      }
+
+      request.onerror = () => reject(request.error)
+    })
+
+    this.cancelAllPendingSyncs()
+    await this.recalculatePendingCount()
+    this.notifyListeners()
+  }
+
+  /**
    * Cancel all pending sync operations (used when leaving project)
    */
   cancelAllPendingSyncs() {
