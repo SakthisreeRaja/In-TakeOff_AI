@@ -180,7 +180,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
             onClick={() => setActiveTab(activeTab === "drawing" ? "" : "drawing")}
             className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "drawing" ? "text-blue-500" : "text-zinc-400"}`}
           >
-            <FiEdit3 size={16} /> <span>Drawing</span>
+            <FiEdit3 size={16} /> <span>Classes</span>
           </button>
           {activeTab === "drawing" && (
             <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
@@ -194,7 +194,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
             onClick={() => setActiveTab(activeTab === "settings" ? "" : "settings")}
             className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "settings" ? "text-blue-500" : "text-zinc-400"}`}
           >
-            <FiLayers size={16} /> <span>Filters</span>
+            <FiLayers size={16} /> <span>Properties</span>
           </button>
           {activeTab === "settings" && (
             <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
