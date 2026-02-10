@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { 
   FiSliders, FiInfo, FiTool, 
   FiMousePointer, FiMove, FiSquare, FiPenTool, 
@@ -6,7 +6,7 @@ import {
   FiMap, FiZoomIn, FiZoomOut, FiTrash2, FiLayers, FiEdit3, FiArrowLeft
 } from "react-icons/fi"
 
-export default function EditorSettings({ filters, setFilters, selectedClass, setSelectedClass, hidden, activeTool, setActiveTool, width }) {
+export default function EditorSettings({ filters, setFilters, selectedClass, setSelectedClass, hidden, activeTool, setActiveTool, width, selectedDetection, onChangeDetectionClass, onClearSelection }) {
   const [activeTab, setActiveTab] = useState("tools")
 
   const isNarrow = width < 220
@@ -18,6 +18,56 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
 
   function toggle(cls) {
     setFilters(prev => ({ ...prev, [cls]: !prev[cls] }))
+  }
+
+  useEffect(() => {
+    if (!selectedDetection) return
+    setActiveTab(isNarrow ? "settings" : "properties")
+  }, [selectedDetection, isNarrow])
+
+  const renderSelectedAnnotation = () => {
+    if (!selectedDetection) return null
+
+    return (
+      <div className="p-3 bg-zinc-900/60 rounded-lg border border-zinc-800 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Selected Annotation</h4>
+          <button
+            type="button"
+            onClick={() => onClearSelection && onClearSelection()}
+            className="text-[10px] text-zinc-400 hover:text-white transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+        <div className="text-[11px] text-zinc-400 mb-3">
+          Click a class to update. Confidence will be set to 100%.
+        </div>
+        <div className={`grid gap-2 ${isNarrow ? "grid-cols-2" : "grid-cols-3"}`}>
+          {classes.map(cls => {
+            const isActive = selectedDetection.class_name === cls
+            return (
+              <button
+                key={cls}
+                type="button"
+                onClick={() => onChangeDetectionClass && onChangeDetectionClass(cls)}
+                className={`px-2 py-1.5 rounded border text-[11px] font-medium transition-colors ${
+                  isActive
+                    ? "bg-blue-600/20 border-blue-500 text-blue-200"
+                    : "bg-zinc-950 border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                }`}
+              >
+                {cls.replace("_", " / ")}
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-3 text-[11px] text-zinc-500">
+          Current: <span className="text-zinc-200">{selectedDetection.class_name || "—"}</span>
+          {selectedDetection.is_manual ? " • Manual" : " • AI"}
+        </div>
+      </div>
+    )
   }
 
   const renderDrawing = () => (
@@ -46,6 +96,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
 
   const renderSettings = () => (
     <div className="animate-in fade-in duration-300">
+      {isNarrow && renderSelectedAnnotation()}
       <h4 className="text-sm font-semibold mb-3 text-zinc-200">Class Visibility Filters</h4>
       <p className="text-xs text-zinc-400 mb-4">Toggle which classes are visible on the canvas</p>
       
@@ -71,6 +122,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
 
   const renderProperties = () => (
     <div className="animate-in fade-in duration-300 space-y-4">
+      {renderSelectedAnnotation()}
       <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
         <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Dimensions</h4>
         <div className="grid grid-cols-2 gap-3 mb-3">

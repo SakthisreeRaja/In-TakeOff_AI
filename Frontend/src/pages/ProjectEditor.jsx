@@ -83,6 +83,21 @@ export default function ProjectEditor() {
     activePage?.page_id
   )
 
+  const [selectedDetectionId, setSelectedDetectionId] = useState(null)
+  const selectedDetection = selectedDetectionId
+    ? detections.find(d => d.id === selectedDetectionId)
+    : null
+
+  useEffect(() => {
+    if (selectedDetectionId && !selectedDetection) {
+      setSelectedDetectionId(null)
+    }
+  }, [selectedDetectionId, selectedDetection])
+
+  useEffect(() => {
+    setSelectedDetectionId(null)
+  }, [activePage?.page_id])
+
   const undoStackRef = useRef([])
   const UNDO_LIMIT = 50
 
@@ -157,7 +172,7 @@ export default function ProjectEditor() {
       } else if (action.type === "delete") {
         await restoreDeletedDetection(action.detection)
       } else if (action.type === "update") {
-        const updatePayload = buildUpdatePayload(action.previous)
+        const updatePayload = buildUpdatePayload(action.previous, { includeMeta: action.includeMeta })
         if (updatePayload) {
           await update(action.id, updatePayload)
         }
@@ -545,9 +560,54 @@ export default function ProjectEditor() {
         id,
         previous: meta.previous,
         next: meta.next,
+        includeMeta: Boolean(meta.includeMeta),
       })
     }
     return updatedDetection
+  }
+
+  function handleSelectDetection(det) {
+    setSelectedDetectionId(det?.id || null)
+  }
+
+  async function handleChangeDetectionClass(newClass) {
+    if (!selectedDetection) return
+    if (!newClass) {
+      return
+    }
+
+    const shouldUpdate =
+      newClass !== selectedDetection.class_name ||
+      selectedDetection.confidence !== 1.0 ||
+      (!selectedDetection.is_manual && !selectedDetection.is_edited)
+
+    if (!shouldUpdate) return
+
+    const updates = {
+      class_name: newClass,
+      confidence: 1.0,
+    }
+    if (!selectedDetection.is_manual) {
+      updates.is_edited = true
+    }
+
+    const next = {
+      ...selectedDetection,
+      class_name: newClass,
+      confidence: 1.0,
+      is_edited: selectedDetection.is_manual ? selectedDetection.is_edited : true,
+    }
+
+    await handleUpdateDetection(selectedDetection.id, updates, {
+      previous: selectedDetection,
+      next,
+      includeMeta: true,
+      reason: "class",
+    })
+  }
+
+  function handleClearSelection() {
+    setSelectedDetectionId(null)
   }
 
   async function handleDeleteDetection(id) {
@@ -602,6 +662,9 @@ export default function ProjectEditor() {
             setActiveTool={setActiveTool}
             hidden={layout.settings < 60}
             width={layout.settings}
+            selectedDetection={selectedDetection}
+            onChangeDetectionClass={handleChangeDetectionClass}
+            onClearSelection={handleClearSelection}
           />
         </div>
 
@@ -617,6 +680,8 @@ export default function ProjectEditor() {
             onAddDetection={handleAddDetection}
             onUpdateDetection={handleUpdateDetection}
             onDeleteDetection={handleDeleteDetection}
+            onSelectDetection={handleSelectDetection}
+            selectedDetectionId={selectedDetectionId}
             onUpload={() => fileInputRef.current.click()}
             isProcessing={isProcessing}
             isUploading={isUploading}

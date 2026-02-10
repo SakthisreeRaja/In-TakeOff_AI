@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
+export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onSelectDetection, selectedDetectionId, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
   const containerRef = useRef(null);
   const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
   const [scale, setScale] = useState(1);
@@ -75,8 +75,21 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   useEffect(() => {
     if (selectedId && !detections.some(d => d.id === selectedId)) {
       setSelectedId(null);
+      if (onSelectDetection) {
+        onSelectDetection(null);
+      }
     }
-  }, [detections, selectedId]);
+  }, [detections, selectedId, onSelectDetection]);
+
+  useEffect(() => {
+    if (!selectedDetectionId && selectedId) {
+      setSelectedId(null);
+      return;
+    }
+    if (selectedDetectionId && selectedDetectionId !== selectedId) {
+      setSelectedId(selectedDetectionId);
+    }
+  }, [selectedDetectionId, selectedId]);
 
   useEffect(() => {
     if (activeTool !== "select" && editState) {
@@ -256,6 +269,9 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
       bbox_y2: det.bbox_y2,
     };
     setSelectedId(det.id);
+    if (onSelectDetection) {
+      onSelectDetection(det);
+    }
     setEditState({
       id: det.id,
       type: "move",
@@ -280,6 +296,9 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
       bbox_y2: det.bbox_y2,
     };
     setSelectedId(det.id);
+    if (onSelectDetection) {
+      onSelectDetection(det);
+    }
     setEditState({
       id: det.id,
       type: "resize",
@@ -333,6 +352,9 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
 
     if (activeTool === "select") {
       setSelectedId(null);
+      if (onSelectDetection) {
+        onSelectDetection(null);
+      }
       return;
     }
 
