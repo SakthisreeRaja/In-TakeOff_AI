@@ -267,6 +267,7 @@ class PDFService(BaseService):
                             bbox_x2=float(x2),
                             bbox_y2=float(y2),
                             is_manual=False,
+                            is_edited=False,
                         )
                         self.db.add(record)
 
@@ -279,6 +280,7 @@ class PDFService(BaseService):
                             "label": label,
                             "confidence": conf,
                             "is_manual": False,
+                            "is_edited": False,
                         })
                 elif result.obb is not None:
                     obb = result.obb.cpu()
@@ -303,6 +305,7 @@ class PDFService(BaseService):
                             bbox_x2=float(x2),
                             bbox_y2=float(y2),
                             is_manual=False,
+                            is_edited=False,
                         )
                         self.db.add(record)
 
@@ -315,6 +318,7 @@ class PDFService(BaseService):
                             "label": label,
                             "confidence": conf,
                             "is_manual": False,
+                            "is_edited": False,
                         })
 
             return bounding_boxes
@@ -358,6 +362,7 @@ class PDFService(BaseService):
                     "label": d.class_name,
                     "confidence": d.confidence,
                     "is_manual": d.is_manual,
+                    "is_edited": d.is_edited,
                 }
                 for d in detections
             ]

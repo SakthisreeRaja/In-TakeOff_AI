@@ -79,9 +79,115 @@ export default function ProjectEditor() {
   const activePage =
     sortedPages.length > 0 ? sortedPages[activePageIdx] : null
 
-  const { detections, add, remove, refresh, syncStatus = {}, syncNow, cancelSync } = useDetections(
+  const { detections, add, update, remove, refresh, syncStatus = {}, syncNow, cancelSync } = useDetections(
     activePage?.page_id
   )
+
+  const undoStackRef = useRef([])
+  const UNDO_LIMIT = 50
+
+  const pushUndo = (action) => {
+    const stack = undoStackRef.current
+    stack.push(action)
+    if (stack.length > UNDO_LIMIT) {
+      stack.shift()
+    }
+  }
+
+  const buildUpdatePayload = (box, options = {}) => {
+    if (!box) return null
+    const payload = {
+      bbox_x1: box.bbox_x1,
+      bbox_y1: box.bbox_y1,
+      bbox_x2: box.bbox_x2,
+      bbox_y2: box.bbox_y2,
+    }
+    if (options.includeMeta) {
+      payload.class_name = box.class_name
+      payload.confidence = box.confidence
+      payload.notes = box.notes
+    }
+    if (typeof box.is_edited === "boolean") {
+      payload.is_edited = box.is_edited
+    }
+    return payload
+  }
+
+  const buildCreatePayload = (box) => {
+    if (!box) return null
+    const payload = {
+      project_id: box.project_id,
+      page_id: box.page_id,
+      class_name: box.class_name,
+      confidence: box.confidence,
+      bbox_x1: box.bbox_x1,
+      bbox_y1: box.bbox_y1,
+      bbox_x2: box.bbox_x2,
+      bbox_y2: box.bbox_y2,
+      notes: box.notes,
+      is_manual: box.is_manual,
+    }
+    if (typeof box.is_edited === "boolean") {
+      payload.is_edited = box.is_edited
+    }
+    return payload
+  }
+
+  const restoreDeletedDetection = async (box) => {
+    const updatePayload = buildUpdatePayload(box, { includeMeta: true })
+    if (!updatePayload) return
+
+    try {
+      await update(box.id, updatePayload)
+      return
+    } catch (error) {
+      const createPayload = buildCreatePayload(box)
+      if (!createPayload) return
+      await add(createPayload)
+    }
+  }
+
+  const undoLast = async () => {
+    const action = undoStackRef.current.pop()
+    if (!action) return
+
+    try {
+      if (action.type === "add") {
+        await remove(action.detection.id)
+      } else if (action.type === "delete") {
+        await restoreDeletedDetection(action.detection)
+      } else if (action.type === "update") {
+        const updatePayload = buildUpdatePayload(action.previous)
+        if (updatePayload) {
+          await update(action.id, updatePayload)
+        }
+      }
+    } catch (error) {
+      console.error("Undo failed:", error)
+    }
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isUndo = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey
+      if (!isUndo) return
+
+      const target = e.target
+      const isEditable =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+
+      if (isEditable) return
+
+      e.preventDefault()
+      void undoLast()
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   // Check if there are unsaved changes
   const hasPendingChanges = syncStatus?.syncing || (syncStatus?.pendingCount && syncStatus.pendingCount > 0)
@@ -418,6 +524,40 @@ export default function ProjectEditor() {
     }
   }
 
+  async function handleAddDetection(box) {
+    if (!project?.id || !activePage?.page_id) return null
+    const tempDetection = await add({
+      ...box,
+      project_id: project.id,
+      page_id: activePage.page_id,
+    })
+    if (tempDetection) {
+      pushUndo({ type: "add", detection: tempDetection })
+    }
+    return tempDetection
+  }
+
+  async function handleUpdateDetection(id, updates, meta) {
+    const updatedDetection = await update(id, updates)
+    if (meta?.previous) {
+      pushUndo({
+        type: "update",
+        id,
+        previous: meta.previous,
+        next: meta.next,
+      })
+    }
+    return updatedDetection
+  }
+
+  async function handleDeleteDetection(id) {
+    const existing = detections.find(d => d.id === id)
+    await remove(id)
+    if (existing) {
+      pushUndo({ type: "delete", detection: existing })
+    }
+  }
+
   async function handleBackClick() {
     // Just navigate back - no warning modal
     // Browser beforeunload will still warn on refresh/close tab
@@ -474,10 +614,9 @@ export default function ProjectEditor() {
             activePageId={activePage?.page_id}
             detections={detections}
             filters={filters}
-            onAddDetection={box =>
-              add({ ...box, project_id: project?.id, page_id: activePage?.page_id })
-            }
-            onDeleteDetection={remove}
+            onAddDetection={handleAddDetection}
+            onUpdateDetection={handleUpdateDetection}
+            onDeleteDetection={handleDeleteDetection}
             onUpload={() => fileInputRef.current.click()}
             isProcessing={isProcessing}
             isUploading={isUploading}

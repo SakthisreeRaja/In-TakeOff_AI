@@ -39,7 +39,7 @@ class CloudinaryService:
                 file_content,
                 public_id=f"images/{filename}",
                 transformation=[
-                    {"width": 4000, "height": 3500, "crop": "limit"},
+                    {"width": 6000, "height": 5500, "crop": "limit"},
                     {"quality": 100 }
                 ]
             )

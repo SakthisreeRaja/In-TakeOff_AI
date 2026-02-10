@@ -41,6 +41,7 @@ class DetectionService(BaseService):
             bbox_y2=data["bbox_y2"],
             notes=data.get("notes"),
             is_manual=data.get("is_manual", True),
+            is_edited=data.get("is_edited", False),
         )
 
         self.db.add(detection)

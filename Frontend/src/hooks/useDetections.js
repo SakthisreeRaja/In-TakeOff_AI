@@ -73,6 +73,7 @@ export default function useDetections(pageId) {
       setDetections(v => [...v, tempDetection])
       
       // Background sync happens automatically via the service
+      return tempDetection
     } catch (error) {
       console.error("Failed to add detection:", error)
       throw error
@@ -86,9 +87,13 @@ export default function useDetections(pageId) {
     try {
       // Optimistic update - instant UI feedback
       const updatedDetection = await detectionSyncService.updateDetection(id, data)
-      setDetections(v => v.map(x => (x.id === id ? updatedDetection : x)))
+      setDetections(v => {
+        const filtered = v.filter(x => x.id !== id && x.id !== updatedDetection.id)
+        return [...filtered, updatedDetection]
+      })
       
       // Background sync happens automatically via the service
+      return updatedDetection
     } catch (error) {
       console.error("Failed to update detection:", error)
       throw error

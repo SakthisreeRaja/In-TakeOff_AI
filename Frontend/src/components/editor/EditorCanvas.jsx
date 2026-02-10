@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
+export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
   const containerRef = useRef(null);
   const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
   const [scale, setScale] = useState(1);
@@ -12,6 +12,8 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState(null);
   const [currentBox, setCurrentBox] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [editState, setEditState] = useState(null);
 
   const activePage = pages.find(p => p.page_id === activePageId);
   // Filter detections based on page and checkbox filters
@@ -31,6 +33,8 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   useEffect(() => {
     setCurrentBox(null);
     setIsDrawing(false);
+    setSelectedId(null);
+    setEditState(null);
     
     // Wait for next frame to ensure container has rendered with correct dimensions
     requestAnimationFrame(() => {
@@ -68,6 +72,18 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     });
   }, [activePageId, activePage]);
 
+  useEffect(() => {
+    if (selectedId && !detections.some(d => d.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [detections, selectedId]);
+
+  useEffect(() => {
+    if (activeTool !== "select" && editState) {
+      setEditState(null);
+    }
+  }, [activeTool, editState]);
+
   // Prevent browser zoom on the canvas container (passive: false required)
   useEffect(() => {
     const container = canvasContainerRef.current;
@@ -102,6 +118,31 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   // Zoom limits
   const MIN_ZOOM = 0.25;
   const MAX_ZOOM = 5;
+  const MIN_BOX_SIZE = 5;
+
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+  const getDetectionColors = (det) => {
+    if (det.is_manual) {
+      return {
+        fill: "rgba(34, 197, 94, 0.2)",
+        stroke: "#22c55e",
+        text: "#22c55e",
+      };
+    }
+    if (det.is_edited) {
+      return {
+        fill: "rgba(245, 158, 11, 0.25)",
+        stroke: "#f59e0b",
+        text: "#f59e0b",
+      };
+    }
+    return {
+      fill: "rgba(59, 130, 246, 0.2)",
+      stroke: "#3b82f6",
+      text: "#3b82f6",
+    };
+  };
 
   // 1. Handle Zoom (Mouse wheel and trackpad gestures - canvas only)
   const handleWheel = (e) => {
@@ -153,9 +194,147 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     };
   };
 
+  const getMoveBox = (startBox, startMouse, coords) => {
+    if (!activePage) return startBox;
+    const width = startBox.bbox_x2 - startBox.bbox_x1;
+    const height = startBox.bbox_y2 - startBox.bbox_y1;
+    const maxX1 = Math.max(0, activePage.width - width);
+    const maxY1 = Math.max(0, activePage.height - height);
+    const nextX1 = clamp(startBox.bbox_x1 + (coords.x - startMouse.x), 0, maxX1);
+    const nextY1 = clamp(startBox.bbox_y1 + (coords.y - startMouse.y), 0, maxY1);
+
+    return {
+      bbox_x1: nextX1,
+      bbox_y1: nextY1,
+      bbox_x2: nextX1 + width,
+      bbox_y2: nextY1 + height,
+    };
+  };
+
+  const getResizeBox = (startBox, coords, handle) => {
+    if (!activePage) return startBox;
+    let x1 = startBox.bbox_x1;
+    let y1 = startBox.bbox_y1;
+    let x2 = startBox.bbox_x2;
+    let y2 = startBox.bbox_y2;
+
+    if (handle.includes("w")) {
+      x1 = clamp(coords.x, 0, x2 - MIN_BOX_SIZE);
+    }
+    if (handle.includes("e")) {
+      x2 = clamp(coords.x, x1 + MIN_BOX_SIZE, activePage.width);
+    }
+    if (handle.includes("n")) {
+      y1 = clamp(coords.y, 0, y2 - MIN_BOX_SIZE);
+    }
+    if (handle.includes("s")) {
+      y2 = clamp(coords.y, y1 + MIN_BOX_SIZE, activePage.height);
+    }
+
+    return { bbox_x1: x1, bbox_y1: y1, bbox_x2: x2, bbox_y2: y2 };
+  };
+
+  const hasBoxChanged = (a, b) => {
+    const EPS = 0.5;
+    return (
+      Math.abs(a.bbox_x1 - b.bbox_x1) > EPS ||
+      Math.abs(a.bbox_y1 - b.bbox_y1) > EPS ||
+      Math.abs(a.bbox_x2 - b.bbox_x2) > EPS ||
+      Math.abs(a.bbox_y2 - b.bbox_y2) > EPS
+    );
+  };
+
+  const startMoveEdit = (e, det) => {
+    if (activeTool !== "select") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const coords = getMouseCoords(e);
+    const startBox = {
+      bbox_x1: det.bbox_x1,
+      bbox_y1: det.bbox_y1,
+      bbox_x2: det.bbox_x2,
+      bbox_y2: det.bbox_y2,
+    };
+    setSelectedId(det.id);
+    setEditState({
+      id: det.id,
+      type: "move",
+      handle: null,
+      startMouse: coords,
+      startBox,
+      currentBox: startBox,
+      isManual: det.is_manual,
+      wasEdited: Boolean(det.is_edited),
+    });
+  };
+
+  const startResizeEdit = (e, det, handle) => {
+    if (activeTool !== "select") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const coords = getMouseCoords(e);
+    const startBox = {
+      bbox_x1: det.bbox_x1,
+      bbox_y1: det.bbox_y1,
+      bbox_x2: det.bbox_x2,
+      bbox_y2: det.bbox_y2,
+    };
+    setSelectedId(det.id);
+    setEditState({
+      id: det.id,
+      type: "resize",
+      handle,
+      startMouse: coords,
+      startBox,
+      currentBox: startBox,
+      isManual: det.is_manual,
+      wasEdited: Boolean(det.is_edited),
+    });
+  };
+
+  const commitEdit = () => {
+    if (!editState) return;
+    const startBox = editState.startBox;
+    const finalBox = editState.currentBox || startBox;
+
+    if (hasBoxChanged(finalBox, startBox) && onUpdateDetection) {
+      const updates = {
+        bbox_x1: finalBox.bbox_x1,
+        bbox_y1: finalBox.bbox_y1,
+        bbox_x2: finalBox.bbox_x2,
+        bbox_y2: finalBox.bbox_y2,
+      };
+      if (!editState.isManual) {
+        updates.is_edited = true;
+      }
+
+      const previous = {
+        ...startBox,
+        is_edited: editState.wasEdited,
+      };
+      const next = {
+        ...finalBox,
+        is_edited: editState.isManual ? editState.wasEdited : true,
+      };
+
+      onUpdateDetection(editState.id, updates, {
+        previous,
+        next,
+        reason: editState.type,
+      });
+    }
+
+    setEditState(null);
+  };
+
   // 3. Mouse Interactions
   const handleMouseDown = (e) => {
     if (!activePage) return;
+
+    if (activeTool === "select") {
+      setSelectedId(null);
+      return;
+    }
 
     if (activeTool === "pan") {
       setIsDragging(true);
@@ -169,6 +348,19 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   };
 
   const handleMouseMove = (e) => {
+    if (editState) {
+      const coords = getMouseCoords(e);
+      setEditState(prev => {
+        if (!prev) return prev;
+        const nextBox =
+          prev.type === "move"
+            ? getMoveBox(prev.startBox, prev.startMouse, coords)
+            : getResizeBox(prev.startBox, coords, prev.handle);
+        return { ...prev, currentBox: nextBox };
+      });
+      return;
+    }
+
     if (activeTool === "pan" && isDragging) {
       setPosition({
         x: e.clientX - dragStart.x,
@@ -186,6 +378,11 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   };
 
   const handleMouseUp = () => {
+    if (editState) {
+      commitEdit();
+      return;
+    }
+
     if (activeTool === "pan") {
       setIsDragging(false);
     } else if (activeTool === "draw_box" && isDrawing) {
@@ -200,7 +397,8 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
             bbox_y2: currentBox.y + currentBox.h,
             class_name: selectedClass || "Manual_Item", // Use selected class
             confidence: 1.0,
-            is_manual: true
+            is_manual: true,
+            is_edited: false,
         });
       }
       setCurrentBox(null);
@@ -302,6 +500,17 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     return false;
   };
 
+  const selectedDetection = selectedId
+    ? pageDetections.find(d => d.id === selectedId)
+    : null;
+
+  const orderedDetections = selectedDetection
+    ? [...pageDetections.filter(d => d.id !== selectedId), selectedDetection]
+    : pageDetections;
+
+  const handleSize = 8 / scale;
+  const handleOffset = handleSize / 2;
+
   // 7. Render Canvas
   return (
     <div 
@@ -355,44 +564,82 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
             style={{ pointerEvents: activeTool === 'draw_box' ? 'none' : 'auto' }}
         >
             {/* Existing Detections */}
-            {pageDetections.map((det) => (
-                <g key={det.id} className="group cursor-pointer">
-                    <rect
-                        x={det.bbox_x1}
-                        y={det.bbox_y1}
-                        width={det.bbox_x2 - det.bbox_x1}
-                        height={det.bbox_y2 - det.bbox_y1}
-                        fill={det.is_manual ? "rgba(34, 197, 94, 0.2)" : "rgba(59, 130, 246, 0.2)"}
-                        stroke={det.is_manual ? "#22c55e" : "#3b82f6"}
-                        strokeWidth={2 / scale}
-                        vectorEffect="non-scaling-stroke"
-                    />
-                    <text
-                        x={det.bbox_x1}
-                        y={det.bbox_y1 - 5}
-                        fill={det.is_manual ? "#22c55e" : "#3b82f6"}
-                        fontSize={14 / scale}
-                        fontWeight="bold"
+            {orderedDetections.map((det) => {
+                const displayBox =
+                    editState?.id === det.id && editState?.currentBox
+                        ? editState.currentBox
+                        : det;
+                const colors = getDetectionColors(det);
+                const isSelected = activeTool === "select" && selectedId === det.id;
+
+                return (
+                    <g
+                        key={det.id}
+                        className={activeTool === "select" ? "cursor-move" : "cursor-pointer"}
+                        onMouseDown={(e) => startMoveEdit(e, det)}
                     >
-                        {det.class_name} ({Math.round(det.confidence * 100)}%)
-                    </text>
-                    {/* Delete Button (Visible on Hover) */}
-                    {activeTool === 'eraser' && (
                         <rect
-                            x={det.bbox_x1}
-                            y={det.bbox_y1}
-                            width={det.bbox_x2 - det.bbox_x1}
-                            height={det.bbox_y2 - det.bbox_y1}
-                            fill="rgba(239, 68, 68, 0.4)"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteDetection(det.id);
-                            }}
-                            className="cursor-pointer hover:fill-red-500/60"
+                            x={displayBox.bbox_x1}
+                            y={displayBox.bbox_y1}
+                            width={displayBox.bbox_x2 - displayBox.bbox_x1}
+                            height={displayBox.bbox_y2 - displayBox.bbox_y1}
+                            fill={colors.fill}
+                            stroke={colors.stroke}
+                            strokeWidth={2 / scale}
+                            vectorEffect="non-scaling-stroke"
                         />
-                    )}
-                </g>
-            ))}
+                        <text
+                            x={displayBox.bbox_x1}
+                            y={displayBox.bbox_y1 - 5}
+                            fill={colors.text}
+                            fontSize={14 / scale}
+                            fontWeight="bold"
+                            pointerEvents="none"
+                        >
+                            {det.class_name} ({Math.round(det.confidence * 100)}%)
+                        </text>
+                        {isSelected && (
+                            <>
+                                {[
+                                    { id: "nw", x: displayBox.bbox_x1, y: displayBox.bbox_y1, cursor: "nwse-resize" },
+                                    { id: "ne", x: displayBox.bbox_x2, y: displayBox.bbox_y1, cursor: "nesw-resize" },
+                                    { id: "se", x: displayBox.bbox_x2, y: displayBox.bbox_y2, cursor: "nwse-resize" },
+                                    { id: "sw", x: displayBox.bbox_x1, y: displayBox.bbox_y2, cursor: "nesw-resize" },
+                                ].map(handle => (
+                                    <rect
+                                        key={handle.id}
+                                        x={handle.x - handleOffset}
+                                        y={handle.y - handleOffset}
+                                        width={handleSize}
+                                        height={handleSize}
+                                        fill="#f8fafc"
+                                        stroke="#0f172a"
+                                        strokeWidth={1 / scale}
+                                        vectorEffect="non-scaling-stroke"
+                                        onMouseDown={(e) => startResizeEdit(e, det, handle.id)}
+                                        style={{ cursor: handle.cursor }}
+                                    />
+                                ))}
+                            </>
+                        )}
+                        {/* Delete Button (Visible on Hover) */}
+                        {activeTool === 'eraser' && (
+                            <rect
+                                x={displayBox.bbox_x1}
+                                y={displayBox.bbox_y1}
+                                width={displayBox.bbox_x2 - displayBox.bbox_x1}
+                                height={displayBox.bbox_y2 - displayBox.bbox_y1}
+                                fill="rgba(239, 68, 68, 0.4)"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteDetection(det.id);
+                                }}
+                                className="cursor-pointer hover:fill-red-500/60"
+                            />
+                        )}
+                    </g>
+                );
+            })}
 
             {/* Currently Drawing Box */}
             {currentBox && (

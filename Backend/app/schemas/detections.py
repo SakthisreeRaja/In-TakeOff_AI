@@ -13,6 +13,7 @@ class DetectionCreate(BaseModel):
     bbox_y2: float
     notes: Optional[str] = None
     is_manual: bool = True 
+    is_edited: bool = False
 
 class DetectionUpdate(BaseModel):
     bbox_x1: Optional[float] = None
@@ -22,6 +23,7 @@ class DetectionUpdate(BaseModel):
     confidence: Optional[float] = None
     class_name: Optional[str] = None
     notes: Optional[str] = None
+    is_edited: Optional[bool] = None
 
 class DetectionResponse(BaseModel):
     id: str
@@ -35,6 +37,7 @@ class DetectionResponse(BaseModel):
     bbox_y2: float
     notes: Optional[str] = None
     is_manual: bool
+    is_edited: bool
     created_at: datetime
 
     class Config:
