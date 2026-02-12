@@ -30,3 +30,4 @@ __pycache__/
 uploads/
 *.pyc
 *.pt
+.vite/
