@@ -10,6 +10,19 @@ from PIL import Image
 from io import BytesIO
 
 class DetectionService(BaseService):
+    @staticmethod
+    def _is_disallowed_manual_item(class_name: str | None) -> bool:
+        if not class_name:
+            return False
+        normalized = class_name.lower().replace("_", "").replace("-", "").replace(" ", "")
+        return normalized == "manualitem"
+
+    def _ensure_supported_class_name(self, class_name: str | None) -> None:
+        if self._is_disallowed_manual_item(class_name):
+            raise HTTPException(
+                status_code=422,
+                detail="Manual_Item class is no longer supported. Please select a valid annotation class.",
+            )
 
     def _get_page(self, page_id: str) -> Page:
         page = self.db.query(Page).filter(Page.id == page_id).first()
@@ -28,6 +41,7 @@ class DetectionService(BaseService):
     def create_detection(self, data: Dict):
         # Verify page exists
         self._get_page(data["page_id"])
+        self._ensure_supported_class_name(data.get("class_name"))
 
         detection = Detection(
             id=str(uuid.uuid4()),
@@ -53,6 +67,9 @@ class DetectionService(BaseService):
         detection = self.db.query(Detection).filter(Detection.id == detection_id).first()
         if not detection:
             raise HTTPException(status_code=404, detail="Detection not found")
+
+        if "class_name" in updates:
+            self._ensure_supported_class_name(updates.get("class_name"))
 
         for k, v in updates.items():
             setattr(detection, k, v)

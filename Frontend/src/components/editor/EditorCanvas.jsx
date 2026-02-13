@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { FiAlertCircle, FiX } from "react-icons/fi";
 import { getAnnotationClassLabel } from "./annotationClasses";
 
 export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onSelectDetection, selectedDetectionId, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
@@ -15,6 +16,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const [currentBox, setCurrentBox] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [editState, setEditState] = useState(null);
+  const [showClassRequiredPopup, setShowClassRequiredPopup] = useState(false);
 
   const activePage = pages.find(p => p.page_id === activePageId);
   // Filter detections based on page and checkbox filters
@@ -26,7 +28,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     if (filters && Object.prototype.hasOwnProperty.call(filters, className)) {
       return filters[className];
     }
-    // For classes not in filters (like Manual_Item), always show
+    // For classes not in filters, always show
     return true;
   });
 
@@ -97,6 +99,19 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
       setEditState(null);
     }
   }, [activeTool, editState]);
+
+  useEffect(() => {
+    if (!showClassRequiredPopup) return;
+
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        setShowClassRequiredPopup(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [showClassRequiredPopup]);
 
   // Prevent browser zoom on the canvas container (passive: false required)
   useEffect(() => {
@@ -411,6 +426,12 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     } else if (activeTool === "draw_box" && isDrawing) {
       setIsDrawing(false);
       if (currentBox && currentBox.w > 5 && currentBox.h > 5) {
+        if (!selectedClass) {
+          setShowClassRequiredPopup(true);
+          setCurrentBox(null);
+          return;
+        }
+
         // ⚡ INSTANT Save - No waiting for backend!
         // The detection will sync to backend automatically in background
         onAddDetection({
@@ -418,7 +439,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
             bbox_y1: currentBox.y,
             bbox_x2: currentBox.x + currentBox.w,
             bbox_y2: currentBox.y + currentBox.h,
-            class_name: selectedClass || "Manual_Item", // Use selected class
+            class_name: selectedClass,
             confidence: 1.0,
             is_manual: true,
             is_edited: false,
@@ -679,7 +700,42 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
             )}
         </svg>
       </div>
-      
+
+      {showClassRequiredPopup && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowClassRequiredPopup(false)}
+          />
+          <div className="relative z-10 w-full max-w-sm mx-4 rounded-lg border border-zinc-700 bg-zinc-900 p-5 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowClassRequiredPopup(false)}
+              className="absolute top-3 right-3 text-zinc-400 hover:text-white transition-colors"
+            >
+              <FiX size={18} />
+            </button>
+
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500/10">
+              <FiAlertCircle className="text-yellow-500" size={20} />
+            </div>
+
+            <h3 className="mb-2 text-lg font-semibold text-white">Class Required</h3>
+            <p className="mb-5 text-sm text-zinc-300">
+              Select an annotation class from Draw Class before drawing a box.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowClassRequiredPopup(false)}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* HUD Info & Zoom Controls */}
       <div className="absolute bottom-4 right-4 flex items-center gap-2">
         <div className="bg-zinc-900/90 rounded border border-zinc-800 flex items-center">
