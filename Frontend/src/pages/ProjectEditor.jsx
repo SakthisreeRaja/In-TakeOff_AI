@@ -4,6 +4,7 @@ import EditorHeader from "../components/editor/EditorHeader"
 import EditorSettings from "../components/editor/EditorSettings"
 import EditorCanvas from "../components/editor/EditorCanvas"
 import EditorBOQ from "../components/editor/EditorBOQ"
+import { INITIAL_ANNOTATION_FILTERS } from "../components/editor/annotationClasses"
 import useDetections from "../hooks/useDetections"
 import pdfPreviewService from "../services/pdfPreviewService"
 import detectionSyncService from "../services/detectionSyncService"
@@ -324,15 +325,7 @@ export default function ProjectEditor() {
     return () => stopPolling()
   }, [])
 
-  const [filters, setFilters] = useState({
-    Diffuser: true,
-    Grille: true,
-    Damper: true,
-    Fan: true,
-    VAV_FCU: true,
-    AHU_RTU: true,
-    Louver: true,
-  })
+  const [filters, setFilters] = useState(INITIAL_ANNOTATION_FILTERS)
 
   const [selectedClass, setSelectedClass] = useState(null)
 

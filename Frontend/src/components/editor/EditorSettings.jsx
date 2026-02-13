@@ -18,6 +18,7 @@ import {
   FiEdit3,
   FiArrowLeft,
 } from "react-icons/fi"
+import { ANNOTATION_CLASS_OPTIONS, getAnnotationClassLabel } from "./annotationClasses"
 
 export default function EditorSettings({
   filters,
@@ -36,16 +37,6 @@ export default function EditorSettings({
   const isNarrow = width < 220
   const isDrawBoxTool = activeTool === "draw_box"
   const selectedDetectionId = selectedDetection?.id || null
-
-  const classes = [
-    "Diffuser",
-    "Grille",
-    "Damper",
-    "Fan",
-    "VAV_FCU",
-    "AHU_RTU",
-    "Louver",
-  ]
 
   function toggle(cls) {
     setFilters(prev => ({ ...prev, [cls]: !prev[cls] }))
@@ -83,26 +74,26 @@ export default function EditorSettings({
           Click a class to update. Confidence will be set to 100%.
         </div>
         <div className={`grid gap-2 ${isNarrow ? "grid-cols-2" : "grid-cols-3"}`}>
-          {classes.map(cls => {
-            const isActive = selectedDetection.class_name === cls
+          {ANNOTATION_CLASS_OPTIONS.map(option => {
+            const isActive = selectedDetection.class_name === option.value
             return (
               <button
-                key={cls}
+                key={option.value}
                 type="button"
-                onClick={() => onChangeDetectionClass && onChangeDetectionClass(cls)}
+                onClick={() => onChangeDetectionClass && onChangeDetectionClass(option.value)}
                 className={`px-2 py-1.5 rounded border text-[11px] font-medium transition-colors ${
                   isActive
                     ? "bg-blue-600/20 border-blue-500 text-blue-200"
                     : "bg-zinc-950 border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white"
                 }`}
               >
-                {cls.replace("_", " / ")}
+                {option.label}
               </button>
             )
           })}
         </div>
         <div className="mt-3 text-[11px] text-zinc-500">
-          Current: <span className="text-zinc-200">{selectedDetection.class_name || "-"}</span>
+          Current: <span className="text-zinc-200">{getAnnotationClassLabel(selectedDetection.class_name || "-")}</span>
           {selectedDetection.is_manual ? " (Manual)" : " (AI)"}
         </div>
       </div>
@@ -112,22 +103,22 @@ export default function EditorSettings({
   const renderDrawingClassPicker = () => (
     <div className="animate-in fade-in duration-300">
       <div className="space-y-2 text-sm text-zinc-300">
-        {classes.map(cls => (
+        {ANNOTATION_CLASS_OPTIONS.map(option => (
           <label
-            key={cls}
+            key={option.value}
             className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors p-2 rounded hover:bg-zinc-900/50"
           >
             <input
               type="radio"
               name="drawingClass"
-              checked={selectedClass === cls}
-              onChange={() => setSelectedClass(cls)}
+              checked={selectedClass === option.value}
+              onChange={() => setSelectedClass(option.value)}
               className="w-4 h-4 bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
             />
             {isNarrow ? (
-              <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
+              <span className="truncate">{option.label.substring(0, 15)}</span>
             ) : (
-              <span>{cls.replace("_", " / ")}</span>
+              <span>{option.label}</span>
             )}
           </label>
         ))}
@@ -141,18 +132,18 @@ export default function EditorSettings({
       <p className="text-xs text-zinc-400 mb-4">Toggle which classes are visible on the canvas</p>
 
       <div className="space-y-3 text-sm text-zinc-300">
-        {classes.map(cls => (
-          <label key={cls} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors">
+        {ANNOTATION_CLASS_OPTIONS.map(option => (
+          <label key={option.value} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors">
             <input
               type="checkbox"
-              checked={filters[cls]}
-              onChange={() => toggle(cls)}
+              checked={Boolean(filters[option.value])}
+              onChange={() => toggle(option.value)}
               className="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
             />
             {isNarrow ? (
-              <span className="truncate">{cls.replace("_", "/").substring(0, 15)}</span>
+              <span className="truncate">{option.label.substring(0, 15)}</span>
             ) : (
-              <span>{cls.replace("_", " / ")}</span>
+              <span>{option.label}</span>
             )}
           </label>
         ))}

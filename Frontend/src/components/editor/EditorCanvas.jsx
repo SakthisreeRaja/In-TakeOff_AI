@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getAnnotationClassLabel } from "./annotationClasses";
 
 export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onSelectDetection, selectedDetectionId, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
   const containerRef = useRef(null);
@@ -22,7 +23,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     // Check if this class is enabled in filters
     const className = d.class_name;
     // If filters has this class and it's false, hide it
-    if (filters && filters.hasOwnProperty(className)) {
+    if (filters && Object.prototype.hasOwnProperty.call(filters, className)) {
       return filters[className];
     }
     // For classes not in filters (like Manual_Item), always show
@@ -618,7 +619,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
                             fontWeight="bold"
                             pointerEvents="none"
                         >
-                            {det.class_name} ({Math.round(det.confidence * 100)}%)
+                            {getAnnotationClassLabel(det.class_name)} ({Math.round(det.confidence * 100)}%)
                         </text>
                         {isSelected && (
                             <>
