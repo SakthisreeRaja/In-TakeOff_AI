@@ -5,6 +5,7 @@ import { getAnnotationClassLabel } from "./annotationClasses";
 export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onSelectDetection, selectedDetectionId, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
   const containerRef = useRef(null);
   const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
+  const lastFocusedSelectionKeyRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -93,6 +94,33 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
       setSelectedId(selectedDetectionId);
     }
   }, [selectedDetectionId, selectedId]);
+
+  useEffect(() => {
+    if (!selectedDetectionId) {
+      lastFocusedSelectionKeyRef.current = null;
+    }
+  }, [selectedDetectionId]);
+
+  useEffect(() => {
+    if (!selectedDetectionId || !canvasContainerRef.current) return;
+
+    const selectedDetection = pageDetections.find(d => d.id === selectedDetectionId);
+    if (!selectedDetection) return;
+
+    const focusKey = `${activePageId}:${selectedDetectionId}`;
+    if (lastFocusedSelectionKeyRef.current === focusKey) return;
+
+    const container = canvasContainerRef.current;
+    const centerX = (selectedDetection.bbox_x1 + selectedDetection.bbox_x2) / 2;
+    const centerY = (selectedDetection.bbox_y1 + selectedDetection.bbox_y2) / 2;
+
+    setPosition({
+      x: container.clientWidth / 2 - centerX * scale,
+      y: container.clientHeight / 2 - centerY * scale,
+    });
+
+    lastFocusedSelectionKeyRef.current = focusKey;
+  }, [selectedDetectionId, pageDetections, activePageId, scale]);
 
   useEffect(() => {
     if (activeTool !== "select" && editState) {

@@ -89,19 +89,40 @@ export default function ProjectEditor() {
   )
 
   const [selectedDetectionId, setSelectedDetectionId] = useState(null)
+  const [pendingBoqJump, setPendingBoqJump] = useState(null)
   const selectedDetection = selectedDetectionId
     ? detections.find(d => d.id === selectedDetectionId)
     : null
 
   useEffect(() => {
     if (selectedDetectionId && !selectedDetection) {
+      if (
+        pendingBoqJump &&
+        pendingBoqJump.detectionId === selectedDetectionId &&
+        pendingBoqJump.pageId === activePage?.page_id
+      ) {
+        return
+      }
       setSelectedDetectionId(null)
     }
-  }, [selectedDetectionId, selectedDetection])
+  }, [selectedDetectionId, selectedDetection, pendingBoqJump, activePage?.page_id])
 
   useEffect(() => {
+    if (!activePage?.page_id) return
+    if (pendingBoqJump && pendingBoqJump.pageId === activePage.page_id) return
     setSelectedDetectionId(null)
-  }, [activePage?.page_id])
+  }, [activePage?.page_id, pendingBoqJump])
+
+  useEffect(() => {
+    if (!pendingBoqJump) return
+    if (pendingBoqJump.pageId !== activePage?.page_id) return
+
+    const target = detections.find(d => d.id === pendingBoqJump.detectionId)
+    if (!target) return
+
+    setSelectedDetectionId(target.id)
+    setPendingBoqJump(null)
+  }, [pendingBoqJump, activePage?.page_id, detections])
 
   const undoStackRef = useRef([])
   const UNDO_LIMIT = 50
@@ -603,6 +624,29 @@ export default function ProjectEditor() {
     setSelectedDetectionId(det?.id || null)
   }
 
+  function handleJumpToDetection(det) {
+    if (!det?.id || !det?.page_id) return
+
+    setActiveTool("select")
+
+    const targetPageIndex = sortedPages.findIndex(page => page.page_id === det.page_id)
+    if (targetPageIndex === -1) return
+
+    if (activePage?.page_id === det.page_id) {
+      if (selectedDetectionId === det.id) {
+        setSelectedDetectionId(null)
+        window.requestAnimationFrame(() => setSelectedDetectionId(det.id))
+      } else {
+        setSelectedDetectionId(det.id)
+      }
+      setPendingBoqJump(null)
+      return
+    }
+
+    setPendingBoqJump({ detectionId: det.id, pageId: det.page_id })
+    setActivePageIdx(targetPageIndex)
+  }
+
   async function handleChangeDetectionClass(newClass) {
     if (!selectedDetection) return
     if (!newClass) {
@@ -727,6 +771,8 @@ export default function ProjectEditor() {
             hidden={layout.boq < PANEL_HIDE_THRESHOLD}
             detections={detections}
             pageNumber={activePage?.page_number}
+            pages={sortedPages}
+            onJumpToDetection={handleJumpToDetection}
           />
         </div>
       </div>
