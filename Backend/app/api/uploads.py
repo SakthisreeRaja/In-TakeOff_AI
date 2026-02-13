@@ -24,8 +24,8 @@ async def upload_pdf(
     # Check file size (max 25MB)
     await file.seek(0)
     file_content = await file.read()
-    if len(file_content) > 25 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File size too large. Max 25MB allowed")
+    if len(file_content) > 500 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size too large. Max 500MB allowed")
     
     # Reset file pointer
     await file.seek(0)

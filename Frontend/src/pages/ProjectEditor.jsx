@@ -384,8 +384,8 @@ export default function ProjectEditor() {
       return
     }
     
-    if (file.size > 25 * 1024 * 1024) {
-      alert('File too large. Maximum size is 25MB')
+    if (file.size > 500 * 1024 * 1024) {
+      alert('File too large. Maximum size is 500MB')
       return
     }
     
