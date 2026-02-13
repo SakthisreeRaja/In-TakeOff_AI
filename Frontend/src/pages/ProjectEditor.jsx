@@ -16,6 +16,10 @@ import {
   runDetectionOnPage,
 } from "../services/api"
 
+const MIN_CANVAS_WIDTH = 420
+const PANEL_HIDE_THRESHOLD = 60
+const RESIZE_HANDLE_GUTTER = 16
+
 export default function ProjectEditor() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -335,6 +339,40 @@ export default function ProjectEditor() {
   const widths = useRef({ settings: 280, boq: 320 })
   const [layout, setLayout] = useState({ settings: 280, boq: 320 })
 
+  useEffect(() => {
+    const clampLayoutToContainer = () => {
+      if (!containerRef.current) return
+
+      const rect = containerRef.current.getBoundingClientRect()
+      const maxSideTotal = Math.max(0, rect.width - MIN_CANVAS_WIDTH - RESIZE_HANDLE_GUTTER)
+      const current = widths.current
+      const total = current.settings + current.boq
+
+      if (total <= maxSideTotal) return
+
+      if (maxSideTotal <= 0) {
+        widths.current = { settings: 0, boq: 0 }
+        setLayout(widths.current)
+        return
+      }
+
+      const ratio = maxSideTotal / total
+      let settings = Math.round(current.settings * ratio)
+      let boq = Math.round(current.boq * ratio)
+      const overflow = settings + boq - maxSideTotal
+      if (overflow > 0) {
+        boq = Math.max(0, boq - overflow)
+      }
+
+      widths.current = { settings, boq }
+      setLayout(widths.current)
+    }
+
+    clampLayoutToContainer()
+    window.addEventListener("resize", clampLayoutToContainer)
+    return () => window.removeEventListener("resize", clampLayoutToContainer)
+  }, [])
+
   function startResize(type, e) {
     e.preventDefault()
     document.body.style.cursor = "col-resize"
@@ -343,20 +381,22 @@ export default function ProjectEditor() {
     const rect = containerRef.current.getBoundingClientRect()
     const left = rect.left
     const width = rect.width
-    const handle = 16
+    const maxSideTotal = Math.max(0, width - MIN_CANVAS_WIDTH - RESIZE_HANDLE_GUTTER)
 
     function onMove(ev) {
       const x = ev.clientX - left
       if (type === "settings") {
-        const s = Math.max(0, Math.min(x, width - handle))
-        const b = Math.min(widths.current.boq, width - handle - s)
+        const desiredSettings = Math.max(0, Math.min(x, width - RESIZE_HANDLE_GUTTER))
+        const s = Math.min(desiredSettings, maxSideTotal)
+        const b = Math.min(widths.current.boq, Math.max(0, maxSideTotal - s))
         widths.current = { settings: s, boq: b }
       } else {
-        const b = Math.max(0, Math.min(width - (x + 8), width - handle))
-        const s = Math.min(widths.current.settings, width - handle - b)
+        const desiredBoq = Math.max(0, Math.min(width - (x + 8), width - RESIZE_HANDLE_GUTTER))
+        const b = Math.min(desiredBoq, maxSideTotal)
+        const s = Math.min(widths.current.settings, Math.max(0, maxSideTotal - b))
         widths.current = { settings: s, boq: b }
       }
-      setLayout({ ...widths.current })
+      setLayout(widths.current)
     }
 
     function onUp() {
@@ -660,7 +700,7 @@ export default function ProjectEditor() {
             setSelectedClass={setSelectedClass}
             activeTool={activeTool}
             setActiveTool={setActiveTool}
-            hidden={layout.settings < 60}
+            hidden={layout.settings < PANEL_HIDE_THRESHOLD}
             width={layout.settings}
             selectedDetection={selectedDetection}
             onChangeDetectionClass={handleChangeDetectionClass}
@@ -693,7 +733,7 @@ export default function ProjectEditor() {
         <div onMouseDown={e => startResize("boq", e)} className="w-2 bg-zinc-900 hover:bg-zinc-800 flex-shrink-0 cursor-col-resize" />
 
         <div style={{ width: layout.boq }} className="border-l border-zinc-800 flex-shrink-0 overflow-hidden">
-          <EditorBOQ hidden={layout.boq < 60} />
+          <EditorBOQ hidden={layout.boq < PANEL_HIDE_THRESHOLD} />
         </div>
       </div>
     </div>

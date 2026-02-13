@@ -1,19 +1,50 @@
 import { useEffect, useState } from "react"
-import { 
-  FiSliders, FiInfo, FiTool, 
-  FiMousePointer, FiMove, FiSquare, FiPenTool, 
-  FiMaximize, FiGrid, FiPlusCircle, FiType, 
-  FiMap, FiZoomIn, FiZoomOut, FiTrash2, FiLayers, FiEdit3, FiArrowLeft
+import {
+  FiInfo,
+  FiTool,
+  FiMousePointer,
+  FiMove,
+  FiSquare,
+  FiPenTool,
+  FiMaximize,
+  FiGrid,
+  FiPlusCircle,
+  FiType,
+  FiMap,
+  FiZoomIn,
+  FiZoomOut,
+  FiTrash2,
+  FiLayers,
+  FiEdit3,
+  FiArrowLeft,
 } from "react-icons/fi"
 
-export default function EditorSettings({ filters, setFilters, selectedClass, setSelectedClass, hidden, activeTool, setActiveTool, width, selectedDetection, onChangeDetectionClass, onClearSelection }) {
+export default function EditorSettings({
+  filters,
+  setFilters,
+  selectedClass,
+  setSelectedClass,
+  hidden,
+  activeTool,
+  setActiveTool,
+  width,
+  selectedDetection,
+  onChangeDetectionClass,
+  onClearSelection,
+}) {
   const [activeTab, setActiveTab] = useState("tools")
-
   const isNarrow = width < 220
+  const isDrawBoxTool = activeTool === "draw_box"
+  const selectedDetectionId = selectedDetection?.id || null
 
   const classes = [
-    "Diffuser", "Grille", "Damper", "Fan",
-    "VAV_FCU", "AHU_RTU", "Louver",
+    "Diffuser",
+    "Grille",
+    "Damper",
+    "Fan",
+    "VAV_FCU",
+    "AHU_RTU",
+    "Louver",
   ]
 
   function toggle(cls) {
@@ -21,9 +52,15 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
   }
 
   useEffect(() => {
-    if (!selectedDetection) return
-    setActiveTab(isNarrow ? "settings" : "properties")
-  }, [selectedDetection, isNarrow])
+    if (!selectedDetectionId) return
+    setActiveTab("properties")
+  }, [selectedDetectionId])
+
+  useEffect(() => {
+    if (!isDrawBoxTool && activeTab === "drawing") {
+      setActiveTab("tools")
+    }
+  }, [activeTab, isDrawBoxTool])
 
   const renderSelectedAnnotation = () => {
     if (!selectedDetection) return null
@@ -31,7 +68,9 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
     return (
       <div className="p-3 bg-zinc-900/60 rounded-lg border border-zinc-800 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Selected Annotation</h4>
+          <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+            Selected Annotation
+          </h4>
           <button
             type="button"
             onClick={() => onClearSelection && onClearSelection()}
@@ -63,19 +102,21 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
           })}
         </div>
         <div className="mt-3 text-[11px] text-zinc-500">
-          Current: <span className="text-zinc-200">{selectedDetection.class_name || "—"}</span>
-          {selectedDetection.is_manual ? " • Manual" : " • AI"}
+          Current: <span className="text-zinc-200">{selectedDetection.class_name || "-"}</span>
+          {selectedDetection.is_manual ? " (Manual)" : " (AI)"}
         </div>
       </div>
     )
   }
 
-  const renderDrawing = () => (
+  const renderDrawingClassPicker = () => (
     <div className="animate-in fade-in duration-300">
-      
       <div className="space-y-2 text-sm text-zinc-300">
         {classes.map(cls => (
-          <label key={cls} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors p-2 rounded hover:bg-zinc-900/50">
+          <label
+            key={cls}
+            className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors p-2 rounded hover:bg-zinc-900/50"
+          >
             <input
               type="radio"
               name="drawingClass"
@@ -94,12 +135,11 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
     </div>
   )
 
-  const renderSettings = () => (
+  const renderClassFilters = () => (
     <div className="animate-in fade-in duration-300">
-      {isNarrow && renderSelectedAnnotation()}
       <h4 className="text-sm font-semibold mb-3 text-zinc-200">Class Visibility Filters</h4>
       <p className="text-xs text-zinc-400 mb-4">Toggle which classes are visible on the canvas</p>
-      
+
       <div className="space-y-3 text-sm text-zinc-300">
         {classes.map(cls => (
           <label key={cls} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors">
@@ -128,16 +168,28 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">Neck Size</label>
-            <input type="text" placeholder='12"x12"' className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+            <input
+              type="text"
+              placeholder='12"x12"'
+              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+            />
           </div>
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">Face Size</label>
-            <input type="text" placeholder='24"x24"' className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+            <input
+              type="text"
+              placeholder='24"x24"'
+              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+            />
           </div>
         </div>
         <div>
           <label className="text-[10px] text-zinc-500 block mb-1">Inlet Size</label>
-          <input type="text" placeholder='10" Ø' className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+          <input
+            type="text"
+            placeholder='10" dia'
+            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+          />
         </div>
       </div>
 
@@ -146,15 +198,19 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">CFM</label>
-            <input type="number" placeholder="450" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+            <input
+              type="number"
+              placeholder="450"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+            />
           </div>
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">Orientation</label>
             <select className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none">
-              <option>0°</option>
-              <option>90°</option>
-              <option>180°</option>
-              <option>270°</option>
+              <option>0 deg</option>
+              <option>90 deg</option>
+              <option>180 deg</option>
+              <option>270 deg</option>
             </select>
           </div>
         </div>
@@ -169,11 +225,19 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
         </div>
         <div className="mb-3">
           <label className="text-[10px] text-zinc-500 block mb-1">Manufacturer & Model</label>
-          <input type="text" placeholder="Titus / T-123" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+          <input
+            type="text"
+            placeholder="Titus / T-123"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+          />
         </div>
         <div>
-           <label className="text-[10px] text-zinc-500 block mb-1">Specification Note</label>
-           <textarea rows="3" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none resize-none" placeholder="Add specific notes..."></textarea>
+          <label className="text-[10px] text-zinc-500 block mb-1">Specification Note</label>
+          <textarea
+            rows="3"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none resize-none"
+            placeholder="Add specific notes..."
+          />
         </div>
       </div>
     </div>
@@ -196,7 +260,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
 
   const renderTools = () => (
     <div className={`grid gap-2 mt-2 animate-in fade-in duration-300 ${isNarrow ? "grid-cols-2" : "grid-cols-3"}`}>
-      {toolsList.map((tool) => {
+      {toolsList.map(tool => {
         const Icon = tool.icon
         const isActive = activeTool === tool.id
         return (
@@ -209,9 +273,10 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
               }
             }}
             className={`flex flex-col items-center justify-center p-2.5 rounded-lg border transition-all duration-200
-              ${isActive 
-                ? "bg-blue-600/10 border-blue-500 text-blue-400" 
-                : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-700"
+              ${
+                isActive
+                  ? "bg-blue-600/10 border-blue-500 text-blue-400"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-700"
               }`}
           >
             <Icon size={18} className="mb-1.5" />
@@ -222,58 +287,37 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
     </div>
   )
 
+  const renderAccordionSection = (tabId, Icon, title, content) => (
+    <div key={tabId} className="border-b border-zinc-800">
+      <button
+        onClick={() => setActiveTab(activeTab === tabId ? "" : tabId)}
+        className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === tabId ? "text-blue-500" : "text-zinc-400"}`}
+      >
+        <Icon size={16} />
+        <span>{title}</span>
+      </button>
+      {activeTab === tabId && (
+        <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
+          {content}
+        </div>
+      )}
+    </div>
+  )
+
   if (hidden) return null
 
   if (isNarrow) {
     return (
       <div className="h-full flex flex-col overflow-y-auto bg-black text-white scrollbar-hide">
-        <div className="border-b border-zinc-800">
-          <button
-            onClick={() => setActiveTab(activeTab === "drawing" ? "" : "drawing")}
-            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "drawing" ? "text-blue-500" : "text-zinc-400"}`}
-          >
-            <FiEdit3 size={16} /> <span>Classes</span>
-          </button>
-          {activeTab === "drawing" && (
-            <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
-              {renderDrawing()}
-            </div>
-          )}
-        </div>
-
-        <div className="border-b border-zinc-800">
-          <button
-            onClick={() => setActiveTab(activeTab === "settings" ? "" : "settings")}
-            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "settings" ? "text-blue-500" : "text-zinc-400"}`}
-          >
-            <FiLayers size={16} /> <span>Properties</span>
-          </button>
-          {activeTab === "settings" && (
-            <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
-              {renderSettings()}
-            </div>
-          )}
-        </div>
-
-        <div className="border-b border-zinc-800">
-          <button
-            onClick={() => setActiveTab(activeTab === "tools" ? "" : "tools")}
-            className={`w-full flex items-center gap-3 px-4 h-12 text-sm font-medium transition-colors hover:bg-zinc-900 ${activeTab === "tools" ? "text-blue-500" : "text-zinc-400"}`}
-          >
-            <FiTool size={16} /> <span>Tools</span>
-          </button>
-          {activeTab === "tools" && (
-            <div className="px-4 pb-4 bg-zinc-950/50 border-t border-zinc-800/50">
-              {renderTools()}
-            </div>
-          )}
-        </div>
+        {isDrawBoxTool && renderAccordionSection("drawing", FiEdit3, "Draw Class", renderDrawingClassPicker())}
+        {renderAccordionSection("classes", FiLayers, "Classes", renderClassFilters())}
+        {renderAccordionSection("properties", FiInfo, "Properties", renderProperties())}
+        {renderAccordionSection("tools", FiTool, "Tools", renderTools())}
       </div>
     )
   }
 
-  // Show drawing class selection when draw_box tool is active
-  if (activeTool === "draw_box" && activeTab === "drawing") {
+  if (isDrawBoxTool && activeTab === "drawing") {
     return (
       <div className="h-full flex flex-col overflow-hidden bg-black text-white">
         <div className="flex items-center border-b border-zinc-800 h-12">
@@ -286,14 +330,12 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
           >
             <FiArrowLeft size={18} />
           </button>
-          <div className="flex-1 text-center text-sm font-medium text-white">
-            Annotations
-          </div>
+          <div className="flex-1 text-center text-sm font-medium text-white">Annotations</div>
           <div className="w-16"></div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-hide">
-          {renderDrawing()}
+          {renderDrawingClassPicker()}
         </div>
       </div>
     )
@@ -303,9 +345,9 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
     <div className="h-full flex flex-col overflow-hidden bg-black text-white">
       <div className="flex items-center border-b border-zinc-800">
         <button
-          onClick={() => setActiveTab("settings")}
+          onClick={() => setActiveTab("classes")}
           className={`flex-1 h-12 flex items-center justify-center gap-2 text-sm font-medium transition-colors border-b-2 ${
-            activeTab === "settings" ? "border-blue-500 text-white" : "border-transparent text-zinc-400 hover:text-zinc-200"
+            activeTab === "classes" ? "border-blue-500 text-white" : "border-transparent text-zinc-400 hover:text-zinc-200"
           }`}
         >
           <FiLayers /> Classes
@@ -329,7 +371,7 @@ export default function EditorSettings({ filters, setFilters, selectedClass, set
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-hide">
-        {activeTab === "settings" && renderSettings()}
+        {activeTab === "classes" && renderClassFilters()}
         {activeTab === "properties" && renderProperties()}
         {activeTab === "tools" && renderTools()}
       </div>
