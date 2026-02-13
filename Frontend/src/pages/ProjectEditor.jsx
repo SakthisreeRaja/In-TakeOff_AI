@@ -611,14 +611,12 @@ export default function ProjectEditor() {
 
     const shouldUpdate =
       newClass !== selectedDetection.class_name ||
-      selectedDetection.confidence !== 1.0 ||
       (!selectedDetection.is_manual && !selectedDetection.is_edited)
 
     if (!shouldUpdate) return
 
     const updates = {
       class_name: newClass,
-      confidence: 1.0,
     }
     if (!selectedDetection.is_manual) {
       updates.is_edited = true
@@ -627,7 +625,6 @@ export default function ProjectEditor() {
     const next = {
       ...selectedDetection,
       class_name: newClass,
-      confidence: 1.0,
       is_edited: selectedDetection.is_manual ? selectedDetection.is_edited : true,
     }
 

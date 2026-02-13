@@ -34,6 +34,7 @@ export default function EditorSettings({
   onClearSelection,
 }) {
   const [activeTab, setActiveTab] = useState("tools")
+  const [isEditingAnnotation, setIsEditingAnnotation] = useState(false)
   const isNarrow = width < 220
   const isDrawBoxTool = activeTool === "draw_box"
   const selectedDetectionId = selectedDetection?.id || null
@@ -48,13 +49,21 @@ export default function EditorSettings({
   }, [selectedDetectionId])
 
   useEffect(() => {
+    setIsEditingAnnotation(false)
+  }, [selectedDetectionId])
+
+  useEffect(() => {
     if (!isDrawBoxTool && activeTab === "drawing") {
       setActiveTab("tools")
     }
   }, [activeTab, isDrawBoxTool])
 
   const renderSelectedAnnotation = () => {
-    if (!selectedDetection) return null
+    const annotationStatus = selectedDetection.is_manual
+      ? "Manual"
+      : selectedDetection.is_edited
+        ? "Edited (AI)"
+        : "AI"
 
     return (
       <div className="p-3 bg-zinc-900/60 rounded-lg border border-zinc-800 mb-4">
@@ -70,31 +79,51 @@ export default function EditorSettings({
             Clear
           </button>
         </div>
-        <div className="text-[11px] text-zinc-400 mb-3">
-          Click a class to update. Confidence will be set to 100%.
-        </div>
-        <div className={`grid gap-2 ${isNarrow ? "grid-cols-2" : "grid-cols-3"}`}>
-          {ANNOTATION_CLASS_OPTIONS.map(option => {
-            const isActive = selectedDetection.class_name === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onChangeDetectionClass && onChangeDetectionClass(option.value)}
-                className={`px-2 py-1.5 rounded border text-[11px] font-medium transition-colors ${
-                  isActive
-                    ? "bg-blue-600/20 border-blue-500 text-blue-200"
-                    : "bg-zinc-950 border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white"
-                }`}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
         <div className="mt-3 text-[11px] text-zinc-500">
           Current: <span className="text-zinc-200">{getAnnotationClassLabel(selectedDetection.class_name || "-")}</span>
-          {selectedDetection.is_manual ? " (Manual)" : " (AI)"}
+          {` (${annotationStatus})`}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsEditingAnnotation(prev => !prev)}
+          className={`mt-3 w-full rounded border px-3 py-2 text-xs font-medium transition-colors ${
+            isEditingAnnotation
+              ? "bg-blue-600/20 border-blue-500 text-blue-200"
+              : "bg-zinc-950 border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white"
+          }`}
+        >
+          {isEditingAnnotation ? "Close Annotation Edit" : "Edit Annotation"}
+        </button>
+
+        <div className={`overflow-hidden transition-all duration-300 ${isEditingAnnotation ? "max-h-[420px] opacity-100 mt-3" : "max-h-0 opacity-0 mt-0"}`}>
+          <div className="pt-3 border-t border-zinc-800">
+            <div className="text-[11px] text-zinc-400 mb-3">
+              Select a class to update this annotation.
+            </div>
+            <div className={`grid gap-2 ${isNarrow ? "grid-cols-2" : "grid-cols-3"}`}>
+              {ANNOTATION_CLASS_OPTIONS.map(option => {
+                const isActive = selectedDetection.class_name === option.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChangeDetectionClass && onChangeDetectionClass(option.value)
+                      setIsEditingAnnotation(false)
+                    }}
+                    className={`px-2 py-1.5 rounded border text-[11px] font-medium transition-colors ${
+                      isActive
+                        ? "bg-blue-600/20 border-blue-500 text-blue-200"
+                        : "bg-zinc-950 border-zinc-800 text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -151,88 +180,103 @@ export default function EditorSettings({
     </div>
   )
 
-  const renderProperties = () => (
-    <div className="animate-in fade-in duration-300 space-y-4">
-      {renderSelectedAnnotation()}
-      <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
-        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Dimensions</h4>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Neck Size</label>
-            <input
-              type="text"
-              placeholder='12"x12"'
-              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Face Size</label>
-            <input
-              type="text"
-              placeholder='24"x24"'
-              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
-            />
+  const renderProperties = () => {
+    if (!selectedDetection) {
+      return (
+        <div className="animate-in fade-in duration-300">
+          <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-800 text-center">
+            <h4 className="text-sm font-semibold text-zinc-200 mb-2">No Annotation Selected</h4>
+            <p className="text-xs text-zinc-400">
+              Select a box on the canvas to view and edit annotation properties.
+            </p>
           </div>
         </div>
-        <div>
-          <label className="text-[10px] text-zinc-500 block mb-1">Inlet Size</label>
-          <input
-            type="text"
-            placeholder='10" dia'
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-      </div>
+      )
+    }
 
-      <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
-        <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Specifications</h4>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+    return (
+      <div className="animate-in fade-in duration-300 space-y-4">
+        {renderSelectedAnnotation()}
+        <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Dimensions</h4>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Neck Size</label>
+              <input
+                type="text"
+                placeholder='12"x12"'
+                className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Face Size</label>
+              <input
+                type="text"
+                placeholder='24"x24"'
+                className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
           <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">CFM</label>
+            <label className="text-[10px] text-zinc-500 block mb-1">Inlet Size</label>
             <input
-              type="number"
-              placeholder="450"
+              type="text"
+              placeholder='10" dia'
               className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
             />
           </div>
-          <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Orientation</label>
+        </div>
+
+        <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+          <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Specifications</h4>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">CFM</label>
+              <input
+                type="number"
+                placeholder="450"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">Orientation</label>
+              <select className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none">
+                <option>0 deg</option>
+                <option>90 deg</option>
+                <option>180 deg</option>
+                <option>270 deg</option>
+              </select>
+            </div>
+          </div>
+          <div className="mb-3">
+            <label className="text-[10px] text-zinc-500 block mb-1">Material</label>
             <select className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none">
-              <option>0 deg</option>
-              <option>90 deg</option>
-              <option>180 deg</option>
-              <option>270 deg</option>
+              <option>Aluminum</option>
+              <option>Steel</option>
+              <option>Plastic</option>
+              <option>Stainless Steel</option>
             </select>
           </div>
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] text-zinc-500 block mb-1">Material</label>
-          <select className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none">
-            <option>Aluminum</option>
-            <option>Steel</option>
-            <option>Plastic</option>
-            <option>Stainless Steel</option>
-          </select>
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] text-zinc-500 block mb-1">Manufacturer & Model</label>
-          <input
-            type="text"
-            placeholder="Titus / T-123"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="text-[10px] text-zinc-500 block mb-1">Specification Note</label>
-          <textarea
-            rows="3"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none resize-none"
-            placeholder="Add specific notes..."
-          />
+          <div className="mb-3">
+            <label className="text-[10px] text-zinc-500 block mb-1">Manufacturer & Model</label>
+            <input
+              type="text"
+              placeholder="Titus / T-123"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 block mb-1">Specification Note</label>
+            <textarea
+              rows="3"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none resize-none"
+              placeholder="Add specific notes..."
+            />
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const toolsList = [
     { id: "select", icon: FiMousePointer, label: "Select" },
