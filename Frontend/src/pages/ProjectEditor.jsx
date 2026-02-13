@@ -723,7 +723,11 @@ export default function ProjectEditor() {
         <div onMouseDown={e => startResize("boq", e)} className="w-2 bg-zinc-900 hover:bg-zinc-800 flex-shrink-0 cursor-col-resize" />
 
         <div style={{ width: layout.boq }} className="border-l border-zinc-800 flex-shrink-0 overflow-hidden">
-          <EditorBOQ hidden={layout.boq < PANEL_HIDE_THRESHOLD} />
+          <EditorBOQ
+            hidden={layout.boq < PANEL_HIDE_THRESHOLD}
+            detections={detections}
+            pageNumber={activePage?.page_number}
+          />
         </div>
       </div>
     </div>
