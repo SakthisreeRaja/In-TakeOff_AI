@@ -90,6 +90,7 @@ export default function ProjectEditor() {
 
   const [selectedDetectionId, setSelectedDetectionId] = useState(null)
   const [pendingBoqJump, setPendingBoqJump] = useState(null)
+  const [isFromBoqJump, setIsFromBoqJump] = useState(false)
   const selectedDetection = selectedDetectionId
     ? detections.find(d => d.id === selectedDetectionId)
     : null
@@ -120,9 +121,19 @@ export default function ProjectEditor() {
     const target = detections.find(d => d.id === pendingBoqJump.detectionId)
     if (!target) return
 
+    setIsFromBoqJump(true)
     setSelectedDetectionId(target.id)
     setPendingBoqJump(null)
   }, [pendingBoqJump, activePage?.page_id, detections])
+
+  // Clear BOQ jump flag after canvas has had time to process (prevents sticking)
+  useEffect(() => {
+    if (!isFromBoqJump || !selectedDetectionId) return
+    const timer = setTimeout(() => {
+      setIsFromBoqJump(false)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [isFromBoqJump])
 
   const undoStackRef = useRef([])
   const UNDO_LIMIT = 50
@@ -621,6 +632,7 @@ export default function ProjectEditor() {
   }
 
   function handleSelectDetection(det) {
+    setIsFromBoqJump(false)
     setSelectedDetectionId(det?.id || null)
   }
 
@@ -633,9 +645,12 @@ export default function ProjectEditor() {
     if (targetPageIndex === -1) return
 
     if (activePage?.page_id === det.page_id) {
+      setIsFromBoqJump(true)
       if (selectedDetectionId === det.id) {
         setSelectedDetectionId(null)
-        window.requestAnimationFrame(() => setSelectedDetectionId(det.id))
+        window.requestAnimationFrame(() => {
+          setSelectedDetectionId(det.id)
+        })
       } else {
         setSelectedDetectionId(det.id)
       }
@@ -761,7 +776,7 @@ export default function ProjectEditor() {
             isUploading={isUploading}
             isInitialLoading={isInitialLoading}
             selectedClass={selectedClass}
-            fromBoqJump={Boolean(pendingBoqJump)}
+            fromBoqJump={isFromBoqJump}
           />
         </div>
 

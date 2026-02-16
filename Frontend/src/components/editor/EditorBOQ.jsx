@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { getPageDetections } from "../../services/api"
 import { generateBOQ } from "./boqUtils"
-import { getAnnotationClassLabel } from "./annotationClasses"
+import { getAnnotationClassLabel, getClassColor } from "./annotationClasses"
 
 function getItemStatus(det) {
   if (det?.is_manual) return "Manual"
@@ -156,26 +156,24 @@ export default function EditorBOQ({
                 </div>
                 <div>
                   {boq.rows.map(row => {
-                    const target = sortedDetectionRows.find(det => det.class_name === row.className)
-                    const isClickable = Boolean(target && onJumpToDetection)
-
+                    const classColor = getClassColor(row.className);
                     return (
-                      <button
+                      <div
                         key={row.className}
-                        type="button"
-                        onClick={() => jumpToDetection(target)}
-                        disabled={!isClickable}
-                        className={`w-full grid grid-cols-[1.5fr_0.6fr_0.6fr_0.8fr] gap-2 px-3 py-2 text-xs text-zinc-300 border-b last:border-b-0 border-zinc-800/60 transition-colors ${
-                          isClickable ? "hover:bg-zinc-900/70 text-left cursor-pointer" : "text-left cursor-default"
-                        }`}
-                        title={isClickable ? "Jump to one matching annotation" : undefined}
+                        className="w-full grid grid-cols-[1.5fr_0.6fr_0.6fr_0.8fr] gap-2 px-3 py-2 text-xs text-zinc-300 border-b last:border-b-0 border-zinc-800/60 text-left"
                       >
-                        <span className="truncate" title={row.label}>{row.label}</span>
+                        <span className="truncate flex items-center gap-2" title={row.label}>
+                          <span 
+                            className="w-2.5 h-2.5 flex-shrink-0" 
+                            style={{ backgroundColor: classColor.stroke }}
+                          />
+                          {row.label}
+                        </span>
                         <span className="text-right text-zinc-100">{row.quantity}</span>
                         <span className="text-right">{row.manual}</span>
                         <span className="text-right">{row.editedAi}</span>
-                      </button>
-                    )
+                      </div>
+                    );
                   })}
                 </div>
               </div>
@@ -185,18 +183,27 @@ export default function EditorBOQ({
                   Annotation Tracker (Click to focus in editor)
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  {sortedDetectionRows.map(det => (
-                    <button
-                      key={det.id}
-                      type="button"
-                      onClick={() => jumpToDetection(det)}
-                      className="w-full grid grid-cols-[1.4fr_0.5fr_0.9fr] gap-2 px-3 py-2 text-xs text-zinc-300 border-b last:border-b-0 border-zinc-800/60 hover:bg-zinc-900/70 text-left transition-colors"
-                    >
-                      <span className="truncate" title={getAnnotationClassLabel(det.class_name)}>{getAnnotationClassLabel(det.class_name)}</span>
-                      <span className="text-right text-zinc-400">P{det.page_number || "-"}</span>
-                      <span className="text-right text-zinc-200">{getItemStatus(det)}</span>
-                    </button>
-                  ))}
+                  {sortedDetectionRows.map(det => {
+                    const classColor = getClassColor(det.class_name);
+                    return (
+                      <button
+                        key={det.id}
+                        type="button"
+                        onClick={() => jumpToDetection(det)}
+                        className="w-full grid grid-cols-[1.4fr_0.5fr_0.9fr] gap-2 px-3 py-2 text-xs text-zinc-300 border-b last:border-b-0 border-zinc-800/60 hover:bg-zinc-900/70 text-left transition-colors"
+                      >
+                        <span className="truncate flex items-center gap-2" title={getAnnotationClassLabel(det.class_name)}>
+                          <span 
+                            className="w-2.5 h-2.5 flex-shrink-0" 
+                            style={{ backgroundColor: classColor.stroke }}
+                          />
+                          {getAnnotationClassLabel(det.class_name)}
+                        </span>
+                        <span className="text-right text-zinc-400">P{det.page_number || "-"}</span>
+                        <span className="text-right text-zinc-200">{getItemStatus(det)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </>

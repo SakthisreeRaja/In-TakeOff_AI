@@ -17,8 +17,9 @@ import {
   FiLayers,
   FiEdit3,
   FiArrowLeft,
+  FiTag,
 } from "react-icons/fi"
-import { ANNOTATION_CLASS_OPTIONS, getAnnotationClassLabel } from "./annotationClasses"
+import { ANNOTATION_CLASS_OPTIONS, getAnnotationClassLabel, getClassColor } from "./annotationClasses"
 
 export default function EditorSettings({
   filters,
@@ -132,25 +133,42 @@ export default function EditorSettings({
   const renderDrawingClassPicker = () => (
     <div className="animate-in fade-in duration-300">
       <div className="space-y-2 text-sm text-zinc-300">
-        {ANNOTATION_CLASS_OPTIONS.map(option => (
-          <label
-            key={option.value}
-            className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors p-2 rounded hover:bg-zinc-900/50"
-          >
-            <input
-              type="radio"
-              name="drawingClass"
-              checked={selectedClass === option.value}
-              onChange={() => setSelectedClass(option.value)}
-              className="w-4 h-4 bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
-            />
-            {isNarrow ? (
-              <span className="truncate">{option.label.substring(0, 15)}</span>
-            ) : (
-              <span>{option.label}</span>
-            )}
-          </label>
-        ))}
+        {ANNOTATION_CLASS_OPTIONS.map(option => {
+          const classColor = getClassColor(option.value);
+          const isSelected = selectedClass === option.value;
+          return (
+            <label
+              key={option.value}
+              className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors p-2 rounded hover:bg-zinc-900/50"
+            >
+              {isSelected ? (
+                <div className="relative flex items-center justify-center">
+                  <span 
+                    className="w-3 h-3 border-2"
+                    style={{ 
+                      backgroundColor: classColor.stroke,
+                      borderColor: '#3b82f6'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-3 h-3" />
+              )}
+              <input
+                type="radio"
+                name="drawingClass"
+                checked={isSelected}
+                onChange={() => setSelectedClass(option.value)}
+                className="sr-only"
+              />
+              {isNarrow ? (
+                <span className="truncate">{option.label.substring(0, 15)}</span>
+              ) : (
+                <span>{option.label}</span>
+              )}
+            </label>
+          );
+        })}
       </div>
     </div>
   )
@@ -161,21 +179,38 @@ export default function EditorSettings({
       <p className="text-xs text-zinc-400 mb-4">Toggle which classes are visible on the canvas</p>
 
       <div className="space-y-3 text-sm text-zinc-300">
-        {ANNOTATION_CLASS_OPTIONS.map(option => (
-          <label key={option.value} className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors">
-            <input
-              type="checkbox"
-              checked={Boolean(filters[option.value])}
-              onChange={() => toggle(option.value)}
-              className="w-4 h-4 rounded bg-zinc-800 border-zinc-600 text-blue-600 focus:ring-offset-zinc-900 focus:ring-blue-500"
-            />
-            {isNarrow ? (
-              <span className="truncate">{option.label.substring(0, 15)}</span>
-            ) : (
-              <span>{option.label}</span>
-            )}
-          </label>
-        ))}
+        {ANNOTATION_CLASS_OPTIONS.map(option => {
+          const classColor = getClassColor(option.value);
+          const isChecked = Boolean(filters[option.value]);
+          return (
+            <label 
+              key={option.value} 
+              className="flex items-center gap-3 cursor-pointer select-none hover:text-white transition-colors"
+            >
+              <div className="relative flex items-center justify-center">
+                <span 
+                  className="w-3 h-3 transition-all"
+                  style={{ 
+                    backgroundColor: isChecked ? classColor.stroke : 'transparent',
+                    border: `2px solid ${classColor.stroke}`,
+                    opacity: isChecked ? 1 : 0.4
+                  }}
+                />
+              </div>
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={() => toggle(option.value)}
+                className="sr-only"
+              />
+              {isNarrow ? (
+                <span className="truncate">{option.label.substring(0, 15)}</span>
+              ) : (
+                <span>{option.label}</span>
+              )}
+            </label>
+          );
+        })}
       </div>
     </div>
   )
@@ -197,6 +232,21 @@ export default function EditorSettings({
     return (
       <div className="animate-in fade-in duration-300 space-y-4">
         {renderSelectedAnnotation()}
+        
+        {/* Tag Bar */}
+        <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+          <div className="flex items-center gap-2 mb-3">
+            <FiTag size={14} className="text-zinc-400" />
+            <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Tags</h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="px-2 py-1 text-[10px] bg-zinc-950 border border-zinc-800 rounded text-zinc-300 hover:bg-zinc-900 hover:text-white transition-colors">
+              + Add Tag
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-500 mt-2">No tags added yet</p>
+        </div>
+
         <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
           <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Dimensions</h4>
           <div className="grid grid-cols-2 gap-3 mb-3">

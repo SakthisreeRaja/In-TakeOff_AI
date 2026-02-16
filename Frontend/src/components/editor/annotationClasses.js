@@ -13,9 +13,9 @@ const classLabelMap = Object.fromEntries(
   ANNOTATION_CLASS_OPTIONS.map(option => [option.value, option.label])
 )
 
-// Class-based color scheme with opacity 0.2
+// Class-based color scheme with opacity 0.2 (AHU: 0.35 for better visibility)
 export const CLASS_COLORS = {
-  "AHU": { fill: "rgba(183, 222, 232, 0.2)", stroke: "#B7DEE8", hex: "#B7DEE8" },
+  "AHU": { fill: "rgba(183, 222, 232, 0.35)", stroke: "#B7DEE8", hex: "#B7DEE8" },
   "Exhaust Fan": { fill: "rgba(102, 153, 255, 0.2)", stroke: "#6699FF", hex: "#6699FF" },
   "Exhaust Grille": { fill: "rgba(255, 0, 0, 0.2)", stroke: "#FF0000", hex: "#FF0000" },
   "Linear Diffuser -Supply-": { fill: "rgba(255, 255, 0, 0.2)", stroke: "#FFFF00", hex: "#FFFF00" },
