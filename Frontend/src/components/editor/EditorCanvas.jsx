@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiX } from "react-icons/fi";
-import { getAnnotationClassLabel } from "./annotationClasses";
+import { getAnnotationClassLabel, getClassColor } from "./annotationClasses";
 
-export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onSelectDetection, selectedDetectionId, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass }) {
+export default function EditorCanvas({ activeTool, pages, activePageId, detections, filters, onAddDetection, onUpdateDetection, onDeleteDetection, onSelectDetection, selectedDetectionId, onUpload, isProcessing, isUploading, isInitialLoading, selectedClass, fromBoqJump }) {
   const containerRef = useRef(null);
   const canvasContainerRef = useRef(null); // Outer container for mouse coordinates
   const lastFocusedSelectionKeyRef = useRef(null);
@@ -10,6 +10,7 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredId, setHoveredId] = useState(null);
   
   // Drawing State
   const [isDrawing, setIsDrawing] = useState(false);
@@ -18,6 +19,11 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
   const [selectedId, setSelectedId] = useState(null);
   const [editState, setEditState] = useState(null);
   const [showClassRequiredPopup, setShowClassRequiredPopup] = useState(false);
+
+  // Zoom limits
+  const MIN_ZOOM = 0.25;
+  const MAX_ZOOM = 5;
+  const MIN_BOX_SIZE = 5;
 
   const activePage = pages.find(p => p.page_id === activePageId);
   // Filter detections based on page and checkbox filters
@@ -101,8 +107,9 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     }
   }, [selectedDetectionId]);
 
+  // Auto-center and zoom only when selection comes from BOQ
   useEffect(() => {
-    if (!selectedDetectionId || !canvasContainerRef.current) return;
+    if (!fromBoqJump || !selectedDetectionId || !canvasContainerRef.current) return;
 
     const selectedDetection = pageDetections.find(d => d.id === selectedDetectionId);
     if (!selectedDetection) return;
@@ -114,13 +121,23 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     const centerX = (selectedDetection.bbox_x1 + selectedDetection.bbox_x2) / 2;
     const centerY = (selectedDetection.bbox_y1 + selectedDetection.bbox_y2) / 2;
 
+    // Calculate zoom to fit the box nicely with padding
+    const boxWidth = selectedDetection.bbox_x2 - selectedDetection.bbox_x1;
+    const boxHeight = selectedDetection.bbox_y2 - selectedDetection.bbox_y1;
+    const padding = 100; // padding around the box
+    const targetScaleX = container.clientWidth / (boxWidth + padding * 2);
+    const targetScaleY = container.clientHeight / (boxHeight + padding * 2);
+    const targetScale = Math.min(targetScaleX, targetScaleY, MAX_ZOOM);
+    const finalScale = Math.max(targetScale, MIN_ZOOM);
+
+    setScale(finalScale);
     setPosition({
-      x: container.clientWidth / 2 - centerX * scale,
-      y: container.clientHeight / 2 - centerY * scale,
+      x: container.clientWidth / 2 - centerX * finalScale,
+      y: container.clientHeight / 2 - centerY * finalScale,
     });
 
     lastFocusedSelectionKeyRef.current = focusKey;
-  }, [selectedDetectionId, pageDetections, activePageId, scale]);
+  }, [fromBoqJump, selectedDetectionId, pageDetections, activePageId]);
 
   useEffect(() => {
     if (activeTool !== "select" && editState) {
@@ -172,32 +189,45 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
     };
   }, []);
 
-  // Zoom limits
-  const MIN_ZOOM = 0.25;
-  const MAX_ZOOM = 5;
-  const MIN_BOX_SIZE = 5;
-
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-  const getDetectionColors = (det) => {
-    if (det.is_manual) {
+  const getDetectionColors = (det, isSelected, isHovered) => {
+    const classColor = getClassColor(det.class_name);
+    
+    // If something is selected and this box is not selected/hovered, dim it
+    const shouldDim = selectedId && !isSelected && !isHovered;
+    
+    if (shouldDim) {
+      // Extract RGB from hex color
+      const r = parseInt(classColor.hex.slice(1, 3), 16);
+      const g = parseInt(classColor.hex.slice(3, 5), 16);
+      const b = parseInt(classColor.hex.slice(5, 7), 16);
       return {
-        fill: "rgba(34, 197, 94, 0.2)",
-        stroke: "#22c55e",
-        text: "#22c55e",
+        fill: `rgba(${r}, ${g}, ${b}, 0.05)`,
+        stroke: classColor.stroke,
+        text: classColor.stroke,
+        strokeOpacity: 0.3,
       };
     }
-    if (det.is_edited) {
+    
+    // Highlight selected or hovered boxes
+    if (isSelected || isHovered) {
+      const r = parseInt(classColor.hex.slice(1, 3), 16);
+      const g = parseInt(classColor.hex.slice(3, 5), 16);
+      const b = parseInt(classColor.hex.slice(5, 7), 16);
       return {
-        fill: "rgba(245, 158, 11, 0.25)",
-        stroke: "#f59e0b",
-        text: "#f59e0b",
+        fill: `rgba(${r}, ${g}, ${b}, 0.35)`,
+        stroke: classColor.stroke,
+        text: classColor.stroke,
+        strokeOpacity: 1,
       };
     }
+    
     return {
-      fill: "rgba(59, 130, 246, 0.2)",
-      stroke: "#3b82f6",
-      text: "#3b82f6",
+      fill: classColor.fill,
+      stroke: classColor.stroke,
+      text: classColor.stroke,
+      strokeOpacity: 1,
     };
   };
 
@@ -641,14 +671,18 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
                     editState?.id === det.id && editState?.currentBox
                         ? editState.currentBox
                         : det;
-                const colors = getDetectionColors(det);
                 const isSelected = activeTool === "select" && selectedId === det.id;
+                const isHovered = hoveredId === det.id;
+                const colors = getDetectionColors(det, isSelected, isHovered);
+                const showLabel = isSelected || isHovered;
 
                 return (
                     <g
                         key={det.id}
                         className={activeTool === "select" ? "cursor-move" : "cursor-pointer"}
                         onMouseDown={(e) => startMoveEdit(e, det)}
+                        onMouseEnter={() => setHoveredId(det.id)}
+                        onMouseLeave={() => setHoveredId(null)}
                     >
                         <rect
                             x={displayBox.bbox_x1}
@@ -658,18 +692,21 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
                             fill={colors.fill}
                             stroke={colors.stroke}
                             strokeWidth={2 / scale}
+                            strokeOpacity={colors.strokeOpacity}
                             vectorEffect="non-scaling-stroke"
                         />
-                        <text
-                            x={displayBox.bbox_x1}
-                            y={displayBox.bbox_y1 - 5}
-                            fill={colors.text}
-                            fontSize={14 / scale}
-                            fontWeight="bold"
-                            pointerEvents="none"
-                        >
-                            {getAnnotationClassLabel(det.class_name)} ({Math.round(det.confidence * 100)}%)
-                        </text>
+                        {showLabel && (
+                            <text
+                                x={displayBox.bbox_x1}
+                                y={displayBox.bbox_y1 - 5}
+                                fill={colors.text}
+                                fontSize={14 / scale}
+                                fontWeight="bold"
+                                pointerEvents="none"
+                            >
+                                {getAnnotationClassLabel(det.class_name)} ({Math.round(det.confidence * 100)}%)
+                            </text>
+                        )}
                         {isSelected && (
                             <>
                                 {[
@@ -714,18 +751,21 @@ export default function EditorCanvas({ activeTool, pages, activePageId, detectio
             })}
 
             {/* Currently Drawing Box */}
-            {currentBox && (
-                <rect
-                    x={currentBox.x}
-                    y={currentBox.y}
-                    width={currentBox.w}
-                    height={currentBox.h}
-                    fill="rgba(34, 197, 94, 0.2)"
-                    stroke="#22c55e"
-                    strokeWidth={2 / scale}
-                    strokeDasharray="4"
-                />
-            )}
+            {currentBox && (() => {
+                const drawColor = getClassColor(selectedClass);
+                return (
+                    <rect
+                        x={currentBox.x}
+                        y={currentBox.y}
+                        width={currentBox.w}
+                        height={currentBox.h}
+                        fill={drawColor.fill}
+                        stroke={drawColor.stroke}
+                        strokeWidth={2 / scale}
+                        strokeDasharray="4"
+                    />
+                );
+            })()}
         </svg>
       </div>
 

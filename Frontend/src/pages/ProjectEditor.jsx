@@ -761,6 +761,7 @@ export default function ProjectEditor() {
             isUploading={isUploading}
             isInitialLoading={isInitialLoading}
             selectedClass={selectedClass}
+            fromBoqJump={Boolean(pendingBoqJump)}
           />
         </div>
 
