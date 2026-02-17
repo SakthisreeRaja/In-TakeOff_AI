@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { getPageDetections } from "../../services/api"
 import { generateBOQ } from "./boqUtils"
 import { getAnnotationClassLabel, getClassColor } from "./annotationClasses"
@@ -15,6 +15,7 @@ export default function EditorBOQ({
   pageNumber = null,
   pages = [],
   onJumpToDetection,
+  deletionTrigger = 0,
 }) {
   const [viewMode, setViewMode] = useState("current")
   const [isGeneratingFullBOQ, setIsGeneratingFullBOQ] = useState(false)
@@ -38,6 +39,13 @@ export default function EditorBOQ({
       return (a.id || "").localeCompare(b.id || "")
     })
   }, [activeDetections])
+
+  // Refresh full PDF BOQ when a detection is deleted (if currently viewing full PDF)
+  useEffect(() => {
+    if (deletionTrigger > 0 && viewMode === "full" && pages.length > 0) {
+      handleGenerateFullPdfBoq()
+    }
+  }, [deletionTrigger])
 
   async function handleGenerateFullPdfBoq() {
     if (!pages.length) return

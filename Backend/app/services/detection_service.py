@@ -90,6 +90,14 @@ class DetectionService(BaseService):
         """Run AI detection on a specific page"""
         page = self._get_page(page_id)
         
+        # Delete all existing AI-generated detections (keep manual and edited ones)
+        self.db.query(Detection).filter(
+            Detection.page_id == page_id,
+            Detection.is_manual == False,
+            Detection.is_edited == False
+        ).delete(synchronize_session='fetch')
+        self.db.commit()
+        
         # Download the image from Cloudinary
         try:
             response = requests.get(page.image_url)

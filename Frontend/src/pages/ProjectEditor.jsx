@@ -91,6 +91,7 @@ export default function ProjectEditor() {
   const [selectedDetectionId, setSelectedDetectionId] = useState(null)
   const [pendingBoqJump, setPendingBoqJump] = useState(null)
   const [isFromBoqJump, setIsFromBoqJump] = useState(false)
+  const [deletionTrigger, setDeletionTrigger] = useState(0)
   const selectedDetection = selectedDetectionId
     ? detections.find(d => d.id === selectedDetectionId)
     : null
@@ -705,6 +706,8 @@ export default function ProjectEditor() {
     if (existing) {
       pushUndo({ type: "delete", detection: existing })
     }
+    // Trigger Full PDF BOQ refresh if it's currently being displayed
+    setDeletionTrigger(prev => prev + 1)
   }
 
   async function handleBackClick() {
@@ -789,6 +792,7 @@ export default function ProjectEditor() {
             pageNumber={activePage?.page_number}
             pages={sortedPages}
             onJumpToDetection={handleJumpToDetection}
+            deletionTrigger={deletionTrigger}
           />
         </div>
       </div>
