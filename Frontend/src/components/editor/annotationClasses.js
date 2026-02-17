@@ -7,6 +7,7 @@ export const ANNOTATION_CLASS_OPTIONS = [
   { value: "Return Grille", label: "Return Grille" },
   { value: "Supply Diffuser", label: "Supply Diffuser" },
   { value: "VAV_FCU", label: "VAV_FCU" },
+  { value: "Volume Damper", label: "Volume Damper" },
 ]
 
 const classLabelMap = Object.fromEntries(
@@ -23,6 +24,7 @@ export const CLASS_COLORS = {
   "Return Grille": { fill: "rgba(255, 128, 0, 0.2)", stroke: "#FF8000", hex: "#FF8000" },
   "Supply Diffuser": { fill: "rgba(0, 0, 255, 0.2)", stroke: "#0000FF", hex: "#0000FF" },
   "VAV_FCU": { fill: "rgba(128, 64, 0, 0.2)", stroke: "#804000", hex: "#804000" },
+  "Volume Damper": { fill: "rgba(147, 51, 234, 0.2)", stroke: "#9333EA", hex: "#9333EA" },
 }
 
 export function getClassColor(className) {

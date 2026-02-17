@@ -4,6 +4,7 @@ import EditorHeader from "../components/editor/EditorHeader"
 import EditorSettings from "../components/editor/EditorSettings"
 import EditorCanvas from "../components/editor/EditorCanvas"
 import EditorBOQ from "../components/editor/EditorBOQ"
+import Toast from "../components/common/Toast"
 import { INITIAL_ANNOTATION_FILTERS } from "../components/editor/annotationClasses"
 import useDetections from "../hooks/useDetections"
 import pdfPreviewService from "../services/pdfPreviewService"
@@ -43,6 +44,7 @@ export default function ProjectEditor() {
     progress: 0,
     error: null
   })
+  const [toast, setToast] = useState(null) // { message, type }
 
   const createdRef = useRef(false)
   const pollingIntervalRef = useRef(null)
@@ -600,9 +602,15 @@ export default function ProjectEditor() {
     try {
       const result = await runDetectionOnPage(activePage.page_id)
       await refresh()
-      alert(`Detection completed! Found ${result.detections_count} objects.`)
+      setToast({
+        message: `Detection completed! Found ${result.detections_count} objects.`,
+        type: "success"
+      })
     } catch {
-      alert("Failed to run detection.")
+      setToast({
+        message: "Failed to run detection.",
+        type: "error"
+      })
     } finally {
       setIsRunningDetection(false)
     }
@@ -800,6 +808,15 @@ export default function ProjectEditor() {
           />
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }
