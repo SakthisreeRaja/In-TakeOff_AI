@@ -7,6 +7,10 @@ from app.services.tiled_detection_service import TiledDetectionService
 from PIL import Image
 import sys
 
+# Allow loading very large images
+Image.MAX_IMAGE_PIXELS = None  # Remove decompression bomb warning
+
+
 def test_tiled_detection(image_path: str):
     """
     Test tiled detection on an image.

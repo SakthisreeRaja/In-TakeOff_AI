@@ -22,6 +22,20 @@ def safe_load(*args, **kwargs):
 torch.load = safe_load
 
 from ultralytics import YOLO
+from ultralytics.nn.modules.head import Detect, OBB, Pose, Segment
+
+
+def _patch_yolo_heads(model):
+    """Patch older OBB/Segment/Pose heads missing the `detect` attribute."""
+    torch_model = getattr(model, "model", None)
+    if torch_model is None:
+        return False
+    patched = False
+    for module in torch_model.modules():
+        if isinstance(module, (OBB, Segment, Pose)) and not hasattr(module, "detect"):
+            module.detect = Detect.forward
+            patched = True
+    return patched
 
 
 class TiledDetectionService:
@@ -34,6 +48,11 @@ class TiledDetectionService:
         """Initialize YOLO model"""
         try:
             self.model = YOLO(model_path)
+            
+            # Patch YOLO heads for compatibility
+            if _patch_yolo_heads(self.model):
+                logger.info("✅ Patched YOLO head modules missing 'detect' attribute.")
+            
             logger.info(f"✅ Tiled detection model loaded: {model_path}")
         except Exception as e:
             logger.error(f"❌ Failed to load model: {e}")
