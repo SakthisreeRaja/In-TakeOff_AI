@@ -88,6 +88,9 @@ export default function ProjectEditor() {
     activePage?.page_id
   )
 
+  // Check if page has AI-generated detections (not manual, not edited)
+  const hasAiDetections = detections.some(d => !d.is_manual && !d.is_edited)
+
   const [selectedDetectionId, setSelectedDetectionId] = useState(null)
   const [pendingBoqJump, setPendingBoqJump] = useState(null)
   const [isFromBoqJump, setIsFromBoqJump] = useState(false)
@@ -723,6 +726,7 @@ export default function ProjectEditor() {
         onBack={handleBackClick}
         onRunDetection={handleRunDetection}
         isRunningDetection={isRunningDetection}
+        hasAiDetections={hasAiDetections}
         syncStatus={syncStatus}
         uploadStatus={{
           ...uploadStatus,

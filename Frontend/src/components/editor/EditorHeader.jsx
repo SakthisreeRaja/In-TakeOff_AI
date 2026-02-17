@@ -6,6 +6,7 @@ export default function EditorHeader({
   onBack, 
   onRunDetection, 
   isRunningDetection, 
+  hasAiDetections = false,
   syncStatus, 
   uploadStatus,
   // Page navigation props
@@ -22,8 +23,14 @@ export default function EditorHeader({
     uploadStatus?.stage === "uploading" ||
     uploadStatus?.stage === "converting"
   const isSyncing = hasPendingSync || isUploadSyncing
-  const runDetectionDisabled = isRunningDetection || isSyncing
-  const runDetectionTip = "Project is syncing. Please wait."
+  const runDetectionDisabled = isRunningDetection || isSyncing || hasAiDetections
+  
+  let runDetectionTip = ""
+  if (hasAiDetections) {
+    runDetectionTip = "Already detected"
+  } else if (isSyncing) {
+    runDetectionTip = "Project is syncing. Please wait."
+  }
 
   return (
     <div className="h-14 border-b border-zinc-800 flex items-center justify-between px-6">
@@ -78,7 +85,7 @@ export default function EditorHeader({
             <FiPlay className={isRunningDetection ? "animate-spin" : ""} />
             {isRunningDetection ? "Running..." : "Run Detection"}
           </button>
-          {isSyncing && (
+          {runDetectionTip && (
             <div className="pointer-events-none absolute right-0 top-full mt-2 z-20 opacity-0 transition-opacity group-hover:opacity-100">
               <div className="relative rounded-lg border border-zinc-700/80 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-100 shadow-lg backdrop-blur">
                 {runDetectionTip}
