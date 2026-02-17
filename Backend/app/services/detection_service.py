@@ -86,8 +86,14 @@ class DetectionService(BaseService):
         self.db.delete(detection)
         self.db.commit()
 
-    async def run_detection_for_page(self, page_id: str):
-        """Run AI detection on a specific page"""
+    async def run_detection_for_page(self, page_id: str, use_tiling: bool = True):
+        """
+        Run AI detection on a specific page.
+        
+        Args:
+            page_id: Page to detect on
+            use_tiling: If True, use tiled inference for better accuracy on large images
+        """
         page = self._get_page(page_id)
         
         # Delete all existing AI-generated detections (keep manual and edited ones)
@@ -106,12 +112,15 @@ class DetectionService(BaseService):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to load image: {str(e)}")
         
-        # Import PDFService to use its generate_detections method
+        # Import PDFService to use its detection methods
         from app.services.pdf_service import PDFService
         pdf_service = PDFService(self.db)
         
-        # Run detection
-        bounding_boxes = pdf_service.generate_detections(page_id, page.project_id, image)
+        # Run detection - choose method based on use_tiling parameter
+        if use_tiling:
+            bounding_boxes = pdf_service.generate_detections_tiled(page_id, page.project_id, image)
+        else:
+            bounding_boxes = pdf_service.generate_detections(page_id, page.project_id, image)
         
         # Commit the detections
         self.db.commit()
@@ -120,6 +129,7 @@ class DetectionService(BaseService):
             "message": "Detection completed",
             "page_id": page_id,
             "detections_count": len(bounding_boxes),
+            "method": "tiled" if use_tiling else "full_image",
             "detections": bounding_boxes
         }
 

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from app.core.database import engine
-from app.models import users, projects, detections, members, boqexports, pages
+from app.models import users, projects, detections, members, boqexports, pages, hvac_components
 
 from app.api import (
     projects as projects_api,
@@ -16,6 +16,7 @@ from app.api import (
     users as users_api,
     teams as teams_api,
     model_status as model_status_api,
+    hvac_components as hvac_components_api,
 )
 
 load_dotenv()
@@ -51,6 +52,7 @@ app.include_router(projects_api.router, prefix="/api")
 app.include_router(uploads.router, prefix="/api")
 app.include_router(pages_api.router, prefix="/api")
 app.include_router(detections_api.router, prefix="/api")
+app.include_router(hvac_components_api.router, prefix="/api/hvac")
 app.include_router(model_status_api.router)
 
 # ----------------------------

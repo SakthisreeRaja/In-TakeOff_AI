@@ -10,6 +10,9 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+# Import tiled detection service
+from app.services.tiled_detection_service import TiledDetectionService
+
 _original_load = torch.load
 def safe_load(*args, **kwargs):
     if "weights_only" not in kwargs:
@@ -330,6 +333,69 @@ class PDFService(BaseService):
                 project_id,
             )
             raise HTTPException(status_code=500, detail=f"AI detection failed: {type(e).__name__}")
+
+    def generate_detections_tiled(self, page_id: str, project_id: str, image: Image.Image):
+        """
+        Generate detections using tiled inference for better accuracy on large images.
+        
+        Args:
+            page_id: Page ID
+            project_id: Project ID
+            image: PIL Image object
+            
+        Returns:
+            List of bounding boxes
+        """
+        try:
+            # Initialize tiled detection service
+            tiled_service = TiledDetectionService(MODEL_PATH)
+            
+            # Run tiled detection
+            detections = tiled_service.detect_with_tiling(image, confidence=0.25)
+            
+            bounding_boxes = []
+            
+            # Save detections to database
+            for det in detections:
+                bb_id = str(uuid.uuid4())
+                
+                record = Detection(
+                    id=bb_id,
+                    page_id=page_id,
+                    project_id=project_id,
+                    class_name=det['class_name'],
+                    confidence=det['confidence'],
+                    bbox_x1=det['bbox_x1'],
+                    bbox_y1=det['bbox_y1'],
+                    bbox_x2=det['bbox_x2'],
+                    bbox_y2=det['bbox_y2'],
+                    is_manual=False,
+                    is_edited=False,
+                )
+                self.db.add(record)
+                
+                bounding_boxes.append({
+                    "id": bb_id,
+                    "x1": det['bbox_x1'],
+                    "y1": det['bbox_y1'],
+                    "x2": det['bbox_x2'],
+                    "y2": det['bbox_y2'],
+                    "label": det['class_name'],
+                    "confidence": det['confidence'],
+                    "is_manual": False,
+                    "is_edited": False,
+                })
+            
+            logger.info(f"✅ Tiled detection completed: {len(bounding_boxes)} detections")
+            return bounding_boxes
+            
+        except Exception as e:
+            logger.exception(
+                "Tiled YOLO inference failed for page_id=%s project_id=%s",
+                page_id,
+                project_id,
+            )
+            raise HTTPException(status_code=500, detail=f"Tiled AI detection failed: {type(e).__name__}")
 
     def get_project_pages(self, project_id: str):
         project = self.db.query(Project).filter(Project.id == project_id).first()

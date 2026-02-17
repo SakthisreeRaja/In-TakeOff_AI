@@ -42,9 +42,22 @@ def delete_detection(detection_id: str, db: Session = Depends(get_db)):
 
 # 🔥 NEW: Run detection on a specific page
 @router.post("/run/{page_id}")
-async def run_detection_on_page(page_id: str, db: Session = Depends(get_db)):
-    """Run AI detection on a specific page"""
-    return await DetectionService(db).run_detection_for_page(page_id)
+async def run_detection_on_page(
+    page_id: str, 
+    use_tiling: bool = True,  # Default to tiled detection for better accuracy
+    db: Session = Depends(get_db)
+):
+    """
+    Run AI detection on a specific page.
+    
+    Args:
+        page_id: ID of the page to run detection on
+        use_tiling: Use tiled inference (recommended for large/high-res images)
+    
+    Returns:
+        Detection results with count and method used
+    """
+    return await DetectionService(db).run_detection_for_page(page_id, use_tiling=use_tiling)
 
 # 🔥 NEW: Batch sync endpoint for efficient syncing
 @router.post("/batch-sync", response_model=BatchSyncResponse)
